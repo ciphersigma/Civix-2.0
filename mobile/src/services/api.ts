@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // For local dev: 'http://192.168.1.8:3000/api/v1'
 const API_BASE_URL = __DEV__
   ? 'http://192.168.1.8:3000/api/v1'
-  : 'http://192.168.1.8:3000/api/v1'; // ← Replace with Vercel URL after deploy
+  : 'https://civix-2-0.vercel.app/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
