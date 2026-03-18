@@ -112,14 +112,26 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
-    // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
-    implementation("com.google.firebase:firebase-analytics")
-    implementation("com.google.firebase:firebase-auth")
+    // Firebase — pin specific versions for Kotlin 2.0.x compatibility
+    implementation("com.google.firebase:firebase-auth:23.0.0")
+    implementation("com.google.firebase:firebase-analytics:22.0.2")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        force 'com.google.firebase:firebase-auth:23.0.0'
+        force 'com.google.firebase:firebase-analytics:22.0.2'
+        force 'com.google.android.gms:play-services-measurement:22.0.2'
+        force 'com.google.android.gms:play-services-measurement-api:22.0.2'
+        force 'com.google.android.gms:play-services-measurement-impl:22.0.2'
+        force 'com.google.android.gms:play-services-measurement-base:22.0.2'
+        force 'com.google.android.gms:play-services-measurement-sdk:22.0.2'
+        force 'com.google.android.gms:play-services-measurement-sdk-api:22.0.2'
     }
 }
