@@ -44,6 +44,33 @@ export function createAuthRouter(pool: Pool): Router {
   });
 
   /**
+   * POST /api/v1/auth/login
+   * Login existing user — sends OTP only if account exists
+   */
+  router.post('/login', async (req: Request, res: Response) => {
+    try {
+      const { phoneNumber } = req.body;
+
+      if (!phoneNumber) {
+        return res.status(400).json({ success: false, message: 'Phone number is required' });
+      }
+
+      const result = await authService.loginUser(phoneNumber);
+
+      return res.status(200).json({
+        success: true,
+        userId: result.userId,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      const msg = error instanceof Error ? error.message : 'Login failed';
+      const status = msg.includes('No account found') ? 404 : 500;
+      return res.status(status).json({ success: false, message: msg });
+    }
+  });
+
+  /**
    * POST /api/v1/auth/verify
    * Verify phone number with verification code
    */

@@ -13,6 +13,21 @@ interface AuthData {
 
 export class AuthService {
   /**
+   * Login — request OTP for existing user only
+   */
+  static async login(phoneNumber: string): Promise<{ userId: string; message: string }> {
+    try {
+      const response = await api.post('/auth/login', { phoneNumber });
+      return response.data;
+    } catch (error: any) {
+      if (error.offline) {
+        return { userId: `offline_${Date.now()}`, message: 'Offline mode — OTP skipped' };
+      }
+      throw new Error(error.response?.data?.message || 'Login failed');
+    }
+  }
+
+  /**
    * Register / request OTP — calls backend POST /api/v1/auth/register
    * Backend sends SMS via Twilio and returns userId
    */

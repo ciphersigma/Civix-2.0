@@ -35,10 +35,12 @@ const COUNTRY_CODES = [
   { code: '+94', flag: '🇱🇰', name: 'Sri Lanka' },
 ];
 
-type Step = 'details' | 'otp';
+type Mode = 'login' | 'signup';
+type Step = 'form' | 'otp';
 
 export const LoginScreen = ({ navigation }: any) => {
-  const [step, setStep] = useState<Step>('details');
+  const [mode, setMode] = useState<Mode>('login');
+  const [step, setStep] = useState<Step>('form');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
@@ -49,22 +51,35 @@ export const LoginScreen = ({ navigation }: any) => {
 
   const fullPhone = `${selectedCountry.code}${phone}`;
 
+  const switchMode = (newMode: Mode) => {
+    setMode(newMode);
+    setStep('form');
+    setOtp('');
+  };
+
   const handleSendOTP = async () => {
-    if (!fullName.trim()) {
-      Alert.alert('Name Required', 'Please enter your full name');
-      return;
-    }
     if (!phone || phone.length < 10) {
       Alert.alert('Invalid Phone', 'Please enter a valid phone number');
       return;
     }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address');
-      return;
+    if (mode === 'signup') {
+      if (!fullName.trim()) {
+        Alert.alert('Name Required', 'Please enter your full name');
+        return;
+      }
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        Alert.alert('Invalid Email', 'Please enter a valid email address');
+        return;
+      }
     }
     setLoading(true);
     try {
-      const result = await AuthService.requestOTP(fullPhone, fullName.trim(), email.trim() || undefined);
+      let result;
+      if (mode === 'login') {
+        result = await AuthService.login(fullPhone);
+      } else {
+        result = await AuthService.requestOTP(fullPhone, fullName.trim(), email.trim() || undefined);
+      }
       if (result.message?.includes('Offline')) {
         Alert.alert('Offline Mode', 'Server unavailable. Entering offline mode.', [
           { text: 'OK', onPress: () => navigation.replace('Home') },
@@ -74,7 +89,7 @@ export const LoginScreen = ({ navigation }: any) => {
         setStep('otp');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to send OTP');
+      Alert.alert('Error', error.message || 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -106,14 +121,10 @@ export const LoginScreen = ({ navigation }: any) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#F8FAFC" barStyle="dark-content" />
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
+          {/* Logo */}
           <View style={styles.logoWrap}>
             <View style={styles.logoCircle}>
               <Text style={styles.logoEmoji}>🌊</Text>
@@ -122,111 +133,62 @@ export const LoginScreen = ({ navigation }: any) => {
             <Text style={styles.tagline}>Waterlogging Alert System</Text>
           </View>
 
-          {step === 'details' ? (
+          {/* Tab switcher */}
+          <View style={styles.tabRow}>
+            <TouchableOpacity style={[styles.tab, mode === 'login' && styles.tabActive]} onPress={() => switchMode('login')}>
+              <Text style={[styles.tabText, mode === 'login' && styles.tabTextActive]}>Login</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.tab, mode === 'signup' && styles.tabActive]} onPress={() => switchMode('signup')}>
+              <Text style={[styles.tabText, mode === 'signup' && styles.tabTextActive]}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+
+          {step === 'form' ? (
             <>
-              <Text style={styles.sectionLabel}>Create your account</Text>
-
-              {/* Full Name */}
-              <View style={styles.inputWrap}>
-                <Text style={styles.inputIcon}>👤</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Full Name"
-                  placeholderTextColor="#9CA3AF"
-                  value={fullName}
-                  onChangeText={setFullName}
-                  editable={!loading}
-                  autoCapitalize="words"
-                />
-              </View>
-
-              {/* Email */}
-              <View style={styles.inputWrap}>
-                <Text style={styles.inputIcon}>✉️</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email (optional)"
-                  placeholderTextColor="#9CA3AF"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  editable={!loading}
-                />
-              </View>
+              {mode === 'signup' && (
+                <>
+                  {/* Full Name */}
+                  <View style={styles.inputWrap}>
+                    <Text style={styles.inputIcon}>👤</Text>
+                    <TextInput style={styles.input} placeholder="Full Name" placeholderTextColor="#9CA3AF" value={fullName} onChangeText={setFullName} editable={!loading} autoCapitalize="words" />
+                  </View>
+                  {/* Email */}
+                  <View style={styles.inputWrap}>
+                    <Text style={styles.inputIcon}>✉️</Text>
+                    <TextInput style={styles.input} placeholder="Email (optional)" placeholderTextColor="#9CA3AF" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" editable={!loading} />
+                  </View>
+                </>
+              )}
 
               {/* Phone */}
               <View style={styles.phoneRow}>
-                <TouchableOpacity
-                  style={styles.countryBtn}
-                  onPress={() => setShowPicker(true)}
-                  disabled={loading}
-                  activeOpacity={0.7}>
+                <TouchableOpacity style={styles.countryBtn} onPress={() => setShowPicker(true)} disabled={loading} activeOpacity={0.7}>
                   <Text style={styles.countryFlag}>{selectedCountry.flag}</Text>
                   <Text style={styles.countryCode}>{selectedCountry.code}</Text>
                   <Text style={styles.countryArrow}>▾</Text>
                 </TouchableOpacity>
                 <View style={styles.phoneInputWrap}>
-                  <TextInput
-                    style={styles.phoneInput}
-                    placeholder="Phone Number"
-                    placeholderTextColor="#9CA3AF"
-                    value={phone}
-                    onChangeText={t => setPhone(t.replace(/[^0-9]/g, ''))}
-                    keyboardType="phone-pad"
-                    maxLength={12}
-                    editable={!loading}
-                  />
+                  <TextInput style={styles.phoneInput} placeholder="Phone Number" placeholderTextColor="#9CA3AF" value={phone} onChangeText={t => setPhone(t.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" maxLength={12} editable={!loading} />
                 </View>
               </View>
 
-              <TouchableOpacity
-                style={[styles.btn, loading && styles.btnDisabled]}
-                onPress={handleSendOTP}
-                disabled={loading}
-                activeOpacity={0.85}>
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.btnText}>Get OTP</Text>
-                )}
+              <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={handleSendOTP} disabled={loading} activeOpacity={0.85}>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Get OTP</Text>}
               </TouchableOpacity>
             </>
           ) : (
             <>
-              <Text style={styles.sectionLabel}>Verify your number</Text>
               <Text style={styles.otpHint}>Enter the 6-digit code sent to {fullPhone}</Text>
-
               <View style={styles.inputWrap}>
                 <Text style={styles.inputIcon}>🔑</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter 6-digit code"
-                  placeholderTextColor="#9CA3AF"
-                  value={otp}
-                  onChangeText={setOtp}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  editable={!loading}
-                  autoFocus
-                />
+                <TextInput style={styles.input} placeholder="Enter 6-digit code" placeholderTextColor="#9CA3AF" value={otp} onChangeText={setOtp} keyboardType="number-pad" maxLength={6} editable={!loading} autoFocus />
               </View>
-
-              <TouchableOpacity
-                style={[styles.btn, loading && styles.btnDisabled]}
-                onPress={handleVerifyOTP}
-                disabled={loading}
-                activeOpacity={0.85}>
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.btnText}>Verify & Continue</Text>
-                )}
+              <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={handleVerifyOTP} disabled={loading} activeOpacity={0.85}>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Verify & Continue</Text>}
               </TouchableOpacity>
-
               <View style={styles.otpLinks}>
-                <TouchableOpacity onPress={() => { setStep('details'); setOtp(''); }} disabled={loading}>
-                  <Text style={styles.linkText}>← Change details</Text>
+                <TouchableOpacity onPress={() => { setStep('form'); setOtp(''); }} disabled={loading}>
+                  <Text style={styles.linkText}>← Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleSendOTP} disabled={loading}>
                   <Text style={styles.linkText}>Resend OTP</Text>
@@ -238,7 +200,6 @@ export const LoginScreen = ({ navigation }: any) => {
           <TouchableOpacity style={styles.skipBtn} onPress={handleSkip} disabled={loading}>
             <Text style={styles.skipText}>Skip for now</Text>
           </TouchableOpacity>
-
           <Text style={styles.footer}>Works offline · Reports sync automatically</Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -276,45 +237,33 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 40 },
 
-  logoWrap: { alignItems: 'center', marginBottom: 32 },
-  logoCircle: {
-    width: 72, height: 72, borderRadius: 36, backgroundColor: '#EEF2FF',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-  },
+  logoWrap: { alignItems: 'center', marginBottom: 24 },
+  logoCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   logoEmoji: { fontSize: 36 },
   title: { fontSize: 28, fontWeight: '800', color: '#1F2937', letterSpacing: 1 },
   tagline: { fontSize: 13, color: '#6B7280', marginTop: 4 },
 
-  sectionLabel: { fontSize: 16, fontWeight: '700', color: '#374151', marginBottom: 16 },
-  otpHint: { fontSize: 13, color: '#6B7280', marginBottom: 16, marginTop: -8 },
+  tabRow: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 14, padding: 4, marginBottom: 20 },
+  tab: { flex: 1, paddingVertical: 12, borderRadius: 11, alignItems: 'center' },
+  tabActive: { backgroundColor: '#fff', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4 },
+  tabText: { fontSize: 15, fontWeight: '600', color: '#9CA3AF' },
+  tabTextActive: { color: '#6366F1' },
 
-  inputWrap: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14,
-    paddingHorizontal: 14, height: 54, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 12,
-  },
+  otpHint: { fontSize: 13, color: '#6B7280', marginBottom: 16 },
+
+  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 14, height: 54, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 12 },
   inputIcon: { fontSize: 18, marginRight: 10 },
   input: { flex: 1, fontSize: 15, color: '#1F2937', paddingVertical: 0 },
 
   phoneRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-  countryBtn: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14,
-    paddingHorizontal: 12, height: 54, borderWidth: 1, borderColor: '#E5E7EB', gap: 6,
-  },
+  countryBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 12, height: 54, borderWidth: 1, borderColor: '#E5E7EB', gap: 6 },
   countryFlag: { fontSize: 20 },
   countryCode: { fontSize: 15, fontWeight: '600', color: '#1F2937' },
   countryArrow: { fontSize: 12, color: '#9CA3AF' },
-  phoneInputWrap: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 14,
-    paddingHorizontal: 14, height: 54, borderWidth: 1, borderColor: '#E5E7EB',
-    justifyContent: 'center',
-  },
+  phoneInputWrap: { flex: 1, backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 14, height: 54, borderWidth: 1, borderColor: '#E5E7EB', justifyContent: 'center' },
   phoneInput: { fontSize: 15, color: '#1F2937', paddingVertical: 0 },
 
-  btn: {
-    backgroundColor: '#6366F1', height: 54, borderRadius: 16, alignItems: 'center',
-    justifyContent: 'center', marginTop: 8, elevation: 4,
-    shadowColor: '#6366F1', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 8,
-  },
+  btn: { backgroundColor: '#6366F1', height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8, elevation: 4, shadowColor: '#6366F1', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 8 },
   btnDisabled: { backgroundColor: '#C7D2FE' },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 
@@ -327,22 +276,10 @@ const styles = StyleSheet.create({
   footer: { textAlign: 'center', color: '#D1D5DB', fontSize: 12, marginTop: 20 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  pickerSheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    maxHeight: '60%', paddingBottom: 30,
-  },
-  pickerHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: '#D1D5DB',
-    alignSelf: 'center', marginTop: 10, marginBottom: 8,
-  },
-  pickerTitle: {
-    fontSize: 16, fontWeight: '700', color: '#1F2937', textAlign: 'center',
-    paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F3F4F6',
-  },
-  pickerItem: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F3F4F6', gap: 12,
-  },
+  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '60%', paddingBottom: 30 },
+  pickerHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#D1D5DB', alignSelf: 'center', marginTop: 10, marginBottom: 8 },
+  pickerTitle: { fontSize: 16, fontWeight: '700', color: '#1F2937', textAlign: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F3F4F6' },
+  pickerItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F3F4F6', gap: 12 },
   pickerItemActive: { backgroundColor: '#EEF2FF' },
   pickerFlag: { fontSize: 22 },
   pickerName: { flex: 1, fontSize: 15, color: '#1F2937' },

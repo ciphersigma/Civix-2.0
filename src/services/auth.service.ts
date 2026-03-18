@@ -104,6 +104,43 @@ export class AuthService {
   }
 
   /**
+   * Login existing user — send OTP only if user already exists
+   */
+  async loginUser(phoneNumber: string): Promise<RegistrationResult> {
+    if (!phoneNumber || phoneNumber.length < 10) {
+      throw new Error('Invalid phone number format');
+    }
+
+    const verificationCode = this.generateVerificationCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    try {
+      const existingUser = await this.pool.query(
+        'SELECT id FROM users WHERE phone_number = $1',
+        [phoneNumber]
+      );
+
+      if (existingUser.rows.length === 0) {
+        throw new Error('No account found with this phone number. Please sign up first.');
+      }
+
+      const userId = existingUser.rows[0].id;
+      await this.pool.query(
+        `UPDATE users SET verification_code = $1, verification_expires_at = $2, updated_at = NOW() WHERE id = $3`,
+        [verificationCode, expiresAt, userId]
+      );
+
+      await this.sendVerificationSMS(phoneNumber, verificationCode);
+
+      return { userId, message: 'Verification code sent successfully' };
+    } catch (error: any) {
+      if (error.message?.includes('No account found')) throw error;
+      console.error('Login error:', error);
+      throw new Error('Failed to send verification code');
+    }
+  }
+
+  /**
    * Verify phone number with verification code
    */
   async verifyPhone(phoneNumber: string, code: string): Promise<VerificationResult> {
