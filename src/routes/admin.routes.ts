@@ -51,7 +51,9 @@ export function createAdminRouter(pool: Pool): Router {
         countParams.push(`%${search}%`);
       }
 
-      query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      const limitIdx = params.length + 1;
+      const offsetIdx = params.length + 2;
+      query += ` ORDER BY created_at DESC LIMIT $${limitIdx} OFFSET $${offsetIdx}`;
       params.push(limit, offset);
 
       const [usersResult, totalResult] = await Promise.all([
@@ -102,7 +104,9 @@ export function createAdminRouter(pool: Pool): Router {
         countQuery += where;
       }
 
-      query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      const limitIdx = params.length + 1;
+      const offsetIdx = params.length + 2;
+      query += ` ORDER BY created_at DESC LIMIT $${limitIdx} OFFSET $${offsetIdx}`;
       const queryParams = [...params, limit, offset];
 
       const [reportsResult, totalResult] = await Promise.all([
@@ -137,6 +141,63 @@ export function createAdminRouter(pool: Pool): Router {
     } catch (error) {
       console.error('Timeline error:', error);
       return res.status(500).json({ message: 'Failed to fetch timeline' });
+    }
+  });
+
+  // PUT /api/v1/admin/users/:id - Update a user
+  router.put('/users/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { full_name, email, phone_number, phone_verified, language } = req.body;
+
+      const fields: string[] = [];
+      const values: any[] = [];
+      let idx = 1;
+
+      if (full_name !== undefined) { fields.push(`full_name = $${idx++}`); values.push(full_name); }
+      if (email !== undefined) { fields.push(`email = $${idx++}`); values.push(email); }
+      if (phone_number !== undefined) { fields.push(`phone_number = $${idx++}`); values.push(phone_number); }
+      if (phone_verified !== undefined) { fields.push(`phone_verified = $${idx++}`); values.push(phone_verified); }
+      if (language !== undefined) { fields.push(`language = $${idx++}`); values.push(language); }
+
+      if (fields.length === 0) {
+        return res.status(400).json({ message: 'No fields to update' });
+      }
+
+      fields.push(`updated_at = NOW()`);
+      values.push(id);
+
+      const result = await pool.query(
+        `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id, full_name, email, phone_number, phone_verified, language`,
+        values
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      return res.json({ user: result.rows[0], message: 'User updated' });
+    } catch (error) {
+      console.error('Update user error:', error);
+      return res.status(500).json({ message: 'Failed to update user' });
+    }
+  });
+
+  // DELETE /api/v1/admin/users/:id - Delete a user
+  router.delete('/users/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await pool.query('DELETE FROM waterlogging_reports WHERE user_id = $1', [id]);
+      const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      return res.json({ message: 'User deleted' });
+    } catch (error) {
+      console.error('Delete user error:', error);
+      return res.status(500).json({ message: 'Failed to delete user' });
     }
   });
 

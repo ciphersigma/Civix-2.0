@@ -53,6 +53,14 @@ class ApiService {
   async getReportsByArea(lat: number, lng: number, radius: number) {
     return this.client.get('/reports/area', { params: { lat, lng, radius } });
   }
+
+  async updateUser(id: string, data: { full_name?: string; email?: string; phone_number?: string; phone_verified?: boolean; language?: string }) {
+    return this.client.put(`/admin/users/${id}`, data);
+  }
+
+  async deleteUser(id: string) {
+    return this.client.delete(`/admin/users/${id}`);
+  }
 }
 
 // eslint-disable-next-line import/no-anonymous-default-export
