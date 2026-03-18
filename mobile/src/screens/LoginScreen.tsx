@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { AuthService } from '../services/AuthService';
 
 const COUNTRY_CODES = [
@@ -49,12 +50,16 @@ export const LoginScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
 
+  // Firebase confirmation ref
+  const confirmationRef = useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
+
   const fullPhone = `${selectedCountry.code}${phone}`;
 
   const switchMode = (newMode: Mode) => {
     setMode(newMode);
     setStep('form');
     setOtp('');
+    confirmationRef.current = null;
   };
 
   const handleSendOTP = async () => {
@@ -74,22 +79,23 @@ export const LoginScreen = ({ navigation }: any) => {
     }
     setLoading(true);
     try {
-      let result;
-      if (mode === 'login') {
-        result = await AuthService.login(fullPhone);
-      } else {
-        result = await AuthService.requestOTP(fullPhone, fullName.trim(), email.trim() || undefined);
-      }
-      if (result.message?.includes('Offline')) {
-        Alert.alert('Offline Mode', 'Server unavailable. Entering offline mode.', [
-          { text: 'OK', onPress: () => navigation.replace('Home') },
-        ]);
-      } else {
-        Alert.alert('OTP Sent', `A verification code has been sent to ${fullPhone}`);
-        setStep('otp');
-      }
+      const confirmation = await AuthService.sendOTP(fullPhone);
+      confirmationRef.current = confirmation;
+      Alert.alert('OTP Sent', `A verification code has been sent to ${fullPhone}`);
+      setStep('otp');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Something went wrong');
+      console.error('Send OTP error:', error);
+      let msg = 'Something went wrong';
+      if (error.code === 'auth/invalid-phone-number') {
+        msg = 'Invalid phone number format';
+      } else if (error.code === 'auth/too-many-requests') {
+        msg = 'Too many attempts. Please try again later.';
+      } else if (error.code === 'auth/network-request-failed') {
+        msg = 'Network error. Check your connection.';
+      } else if (error.message) {
+        msg = error.message;
+      }
+      Alert.alert('Error', msg);
     } finally {
       setLoading(false);
     }
@@ -100,12 +106,31 @@ export const LoginScreen = ({ navigation }: any) => {
       Alert.alert('Invalid Code', 'Please enter the 6-digit verification code');
       return;
     }
+    if (!confirmationRef.current) {
+      Alert.alert('Error', 'Please request a new OTP');
+      return;
+    }
     setLoading(true);
     try {
-      await AuthService.verifyOTP(fullPhone, otp);
+      await AuthService.verifyOTP(
+        confirmationRef.current,
+        otp,
+        fullPhone,
+        mode === 'signup' ? fullName.trim() : undefined,
+        mode === 'signup' ? email.trim() || undefined : undefined,
+      );
       navigation.replace('Home');
     } catch (error: any) {
-      Alert.alert('Verification Failed', error.message || 'Invalid code. Try again.');
+      console.error('Verify OTP error:', error);
+      let msg = 'Invalid code. Try again.';
+      if (error.code === 'auth/invalid-verification-code') {
+        msg = 'Invalid verification code. Please check and try again.';
+      } else if (error.code === 'auth/session-expired') {
+        msg = 'Code expired. Please request a new one.';
+      } else if (error.message) {
+        msg = error.message;
+      }
+      Alert.alert('Verification Failed', msg);
     } finally {
       setLoading(false);
     }
@@ -147,12 +172,10 @@ export const LoginScreen = ({ navigation }: any) => {
             <>
               {mode === 'signup' && (
                 <>
-                  {/* Full Name */}
                   <View style={styles.inputWrap}>
                     <Text style={styles.inputIcon}>👤</Text>
                     <TextInput style={styles.input} placeholder="Full Name" placeholderTextColor="#9CA3AF" value={fullName} onChangeText={setFullName} editable={!loading} autoCapitalize="words" />
                   </View>
-                  {/* Email */}
                   <View style={styles.inputWrap}>
                     <Text style={styles.inputIcon}>✉️</Text>
                     <TextInput style={styles.input} placeholder="Email (optional)" placeholderTextColor="#9CA3AF" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" editable={!loading} />
@@ -160,7 +183,6 @@ export const LoginScreen = ({ navigation }: any) => {
                 </>
               )}
 
-              {/* Phone */}
               <View style={styles.phoneRow}>
                 <TouchableOpacity style={styles.countryBtn} onPress={() => setShowPicker(true)} disabled={loading} activeOpacity={0.7}>
                   <Text style={styles.countryFlag}>{selectedCountry.flag}</Text>
@@ -187,7 +209,7 @@ export const LoginScreen = ({ navigation }: any) => {
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Verify & Continue</Text>}
               </TouchableOpacity>
               <View style={styles.otpLinks}>
-                <TouchableOpacity onPress={() => { setStep('form'); setOtp(''); }} disabled={loading}>
+                <TouchableOpacity onPress={() => { setStep('form'); setOtp(''); confirmationRef.current = null; }} disabled={loading}>
                   <Text style={styles.linkText}>← Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleSendOTP} disabled={loading}>

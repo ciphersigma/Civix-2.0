@@ -1,6 +1,14 @@
 import { Pool } from 'pg';
 import jwt from 'jsonwebtoken';
 import { cacheGet, cacheSet } from '../utils/cache';
+import * as admin from 'firebase-admin';
+
+// Initialize Firebase Admin SDK (uses default credentials or service account)
+if (!admin.apps.length) {
+  admin.initializeApp({
+    projectId: process.env.FIREBASE_PROJECT_ID || 'civix-c4f39',
+  });
+}
 
 interface User {
   id: string;
@@ -99,7 +107,7 @@ export class AuthService {
 
       return {
         userId,
-        message: 'Verification code sent successfully'
+        message: 'Verification code sent successfully',
       };
     } catch (error) {
       console.error('Registration error:', error);
@@ -471,6 +479,81 @@ export class AuthService {
       from: fromNumber,
       text: `Your Waterlogging Alert verification code is: ${code}`
     });
+  }
+
+  /**
+   * Verify Firebase ID token and create/update user in our DB
+   * Returns our own JWT token for the user
+   */
+  async firebaseVerify(
+    firebaseToken: string,
+    phoneNumber: string,
+    fullName?: string,
+    email?: string,
+  ): Promise<{ success: boolean; token?: string; userId?: string; message: string }> {
+    try {
+      // Verify the Firebase ID token
+      const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+      const firebasePhone = decodedToken.phone_number;
+
+      // Ensure the phone from Firebase matches what the client claims
+      if (firebasePhone && firebasePhone !== phoneNumber) {
+        console.warn(`Phone mismatch: Firebase=${firebasePhone}, claimed=${phoneNumber}`);
+        // Use the Firebase-verified phone number
+        phoneNumber = firebasePhone;
+      }
+
+      // Check if user exists
+      const existingUser = await this.pool.query(
+        'SELECT id FROM users WHERE phone_number = $1',
+        [phoneNumber]
+      );
+
+      let userId: string;
+
+      if (existingUser.rows.length > 0) {
+        userId = existingUser.rows[0].id;
+        // Update profile fields and mark as verified
+        await this.pool.query(
+          `UPDATE users 
+           SET phone_verified = TRUE,
+               full_name = COALESCE($1, full_name),
+               email = COALESCE($2, email),
+               firebase_uid = $3,
+               verification_code = NULL,
+               verification_expires_at = NULL,
+               updated_at = NOW()
+           WHERE id = $4`,
+          [fullName || null, email || null, decodedToken.uid, userId]
+        );
+      } else {
+        // Create new user
+        const result = await this.pool.query(
+          `INSERT INTO users (phone_number, full_name, email, phone_verified, firebase_uid)
+           VALUES ($1, $2, $3, TRUE, $4)
+           RETURNING id`,
+          [phoneNumber, fullName || null, email || null, decodedToken.uid]
+        );
+        userId = result.rows[0].id;
+      }
+
+      const token = this.generateToken(userId);
+
+      return {
+        success: true,
+        token,
+        userId,
+        message: 'Firebase verification successful',
+      };
+    } catch (error: any) {
+      console.error('Firebase verify error:', error);
+      return {
+        success: false,
+        message: error.code === 'auth/id-token-expired'
+          ? 'Firebase token expired'
+          : 'Firebase verification failed',
+      };
+    }
   }
 
   /**

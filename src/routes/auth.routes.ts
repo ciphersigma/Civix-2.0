@@ -32,7 +32,7 @@ export function createAuthRouter(pool: Pool): Router {
       return res.status(200).json({
         success: true,
         userId: result.userId,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
       console.error('Registration error:', error);
@@ -156,6 +156,42 @@ export function createAuthRouter(pool: Pool): Router {
       return res.status(500).json({
         success: false,
         message: error instanceof Error ? error.message : 'Token refresh failed'
+      });
+    }
+  });
+
+  /**
+   * POST /api/v1/auth/firebase-verify
+   * Verify Firebase ID token and sync user with our DB
+   */
+  router.post('/firebase-verify', async (req: Request, res: Response) => {
+    try {
+      const { firebaseToken, phoneNumber, fullName, email } = req.body;
+
+      if (!firebaseToken || !phoneNumber) {
+        return res.status(400).json({
+          success: false,
+          message: 'Firebase token and phone number are required',
+        });
+      }
+
+      const result = await authService.firebaseVerify(firebaseToken, phoneNumber, fullName, email);
+
+      if (!result.success) {
+        return res.status(401).json({ success: false, message: result.message });
+      }
+
+      return res.status(200).json({
+        success: true,
+        token: result.token,
+        userId: result.userId,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error('Firebase verify error:', error);
+      return res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Firebase verification failed',
       });
     }
   });

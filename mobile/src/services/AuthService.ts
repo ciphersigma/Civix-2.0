@@ -1,3 +1,4 @@
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { api } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -13,65 +14,67 @@ interface AuthData {
 
 export class AuthService {
   /**
-   * Login — request OTP for existing user only
+   * Send OTP via Firebase Phone Auth
+   * Returns a confirmation object to verify the code later
    */
-  static async login(phoneNumber: string): Promise<{ userId: string; message: string }> {
-    try {
-      const response = await api.post('/auth/login', { phoneNumber });
-      return response.data;
-    } catch (error: any) {
-      if (error.offline) {
-        return { userId: `offline_${Date.now()}`, message: 'Offline mode — OTP skipped' };
-      }
-      throw new Error(error.response?.data?.message || 'Login failed');
-    }
+  static async sendOTP(
+    phoneNumber: string,
+  ): Promise<FirebaseAuthTypes.ConfirmationResult> {
+    const confirmation = await auth().signInWithPhoneNumber(phoneNumber);
+    return confirmation;
   }
 
   /**
-   * Register / request OTP — calls backend POST /api/v1/auth/register
-   * Backend sends SMS via Twilio and returns userId
+   * Verify OTP code using Firebase confirmation object,
+   * then sync user with our backend
    */
-  static async requestOTP(phoneNumber: string, fullName?: string, email?: string): Promise<{ userId: string; message: string }> {
-    try {
-      const response = await api.post('/auth/register', { phoneNumber, fullName, email });
-      return response.data;
-    } catch (error: any) {
-      if (error.offline) {
-        // Offline fallback
-        return { userId: `offline_${Date.now()}`, message: 'Offline mode — OTP skipped' };
-      }
-      throw new Error(error.response?.data?.message || 'Failed to send OTP');
+  static async verifyOTP(
+    confirmation: FirebaseAuthTypes.ConfirmationResult,
+    code: string,
+    phoneNumber: string,
+    fullName?: string,
+    email?: string,
+  ): Promise<AuthData> {
+    // Verify with Firebase
+    const userCredential = await confirmation.confirm(code);
+    if (!userCredential?.user) {
+      throw new Error('Verification failed');
     }
-  }
 
-  /**
-   * Verify OTP — calls backend POST /api/v1/auth/verify
-   * Returns JWT token on success
-   */
-  static async verifyOTP(phoneNumber: string, code: string): Promise<AuthData> {
+    // Get Firebase ID token
+    const firebaseToken = await userCredential.user.getIdToken();
+
+    // Sync with our backend — send Firebase token + profile info
     try {
-      const response = await api.post('/auth/verify', { phoneNumber, code });
+      const response = await api.post('/auth/firebase-verify', {
+        firebaseToken,
+        phoneNumber,
+        fullName,
+        email,
+      });
+
       const { token, userId } = response.data;
-
-      const authData: AuthData = { token, userId, phone: phoneNumber };
+      const authData: AuthData = { token, userId, phone: phoneNumber, fullName, email };
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(authData));
       await AsyncStorage.setItem('authToken', token);
       await AsyncStorage.removeItem('isOfflineMode');
-
       return authData;
     } catch (error: any) {
-      if (error.offline) {
+      // If backend is down, use Firebase auth in offline mode
+      if (error.offline || !error.response) {
         const offlineData: AuthData = {
-          token: `offline_${Date.now()}`,
-          userId: `offline_${Date.now()}`,
+          token: firebaseToken,
+          userId: userCredential.user.uid,
           phone: phoneNumber,
+          fullName,
+          email,
         };
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(offlineData));
-        await AsyncStorage.setItem('authToken', offlineData.token);
+        await AsyncStorage.setItem('authToken', firebaseToken);
         await AsyncStorage.setItem('isOfflineMode', 'true');
         return offlineData;
       }
-      throw new Error(error.response?.data?.message || 'Verification failed');
+      throw new Error(error.response?.data?.message || 'Backend sync failed');
     }
   }
 
@@ -93,6 +96,7 @@ export class AuthService {
   }
 
   static async logout(): Promise<void> {
+    try { await auth().signOut(); } catch {}
     await AsyncStorage.multiRemove([STORAGE_KEY, 'authToken', 'isOfflineMode']);
   }
 }
