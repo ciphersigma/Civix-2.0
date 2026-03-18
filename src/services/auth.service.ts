@@ -90,8 +90,12 @@ export class AuthService {
         console.log(`Created new user ${userId}`);
       }
 
-      // Send SMS verification code
-      await this.sendVerificationSMS(phoneNumber, verificationCode);
+      // Send SMS verification code (don't fail registration if SMS fails)
+      try {
+        await this.sendVerificationSMS(phoneNumber, verificationCode);
+      } catch (smsError) {
+        console.error('SMS failed but registration succeeded:', smsError);
+      }
 
       return {
         userId,
@@ -130,7 +134,11 @@ export class AuthService {
         [verificationCode, expiresAt, userId]
       );
 
-      await this.sendVerificationSMS(phoneNumber, verificationCode);
+      try {
+        await this.sendVerificationSMS(phoneNumber, verificationCode);
+      } catch (smsError) {
+        console.error('SMS failed but login OTP generated:', smsError);
+      }
 
       return { userId, message: 'Verification code sent successfully' };
     } catch (error: any) {
