@@ -1,0 +1,59 @@
+import axios, { AxiosInstance } from 'axios';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api/v1';
+
+class ApiService {
+  private client: AxiosInstance;
+
+  constructor() {
+    this.client = axios.create({
+      baseURL: API_BASE_URL,
+      timeout: 10000,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    this.client.interceptors.request.use((config) => {
+      const token = localStorage.getItem('auth_token');
+      if (token) config.headers.Authorization = `Bearer ${token}`;
+      return config;
+    });
+
+    this.client.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          localStorage.removeItem('auth_token');
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  async adminLogin(email: string, password: string) {
+    return this.client.post('/auth/admin/login', { email, password });
+  }
+
+  async getStats() {
+    return this.client.get('/admin/stats');
+  }
+
+  async getUsers(params?: { page?: number; limit?: number; search?: string }) {
+    return this.client.get('/admin/users', { params });
+  }
+
+  async getReports(params?: { page?: number; limit?: number; severity?: string; status?: string }) {
+    return this.client.get('/admin/reports', { params });
+  }
+
+  async getReportsTimeline() {
+    return this.client.get('/admin/reports/timeline');
+  }
+
+  async getReportsByArea(lat: number, lng: number, radius: number) {
+    return this.client.get('/reports/area', { params: { lat, lng, radius } });
+  }
+}
+
+// eslint-disable-next-line import/no-anonymous-default-export
+export default new ApiService();
