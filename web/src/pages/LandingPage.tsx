@@ -90,7 +90,7 @@ const LandingPage: React.FC = () => {
           <div className="hero-grid">
             <div className="hero-content fade-up">
               <div className="badge"><span className="dot" />Real-time monitoring</div>
-              <h1>Smart waterlogging alerts for safer cities</h1>
+              <h1>Smart <span className="gradient-text">waterlogging alerts</span> for safer cities</h1>
               <p>CIVIX is a crowdsourced platform that delivers real-time waterlogging alerts, helping citizens and authorities navigate monsoon season with community-powered intelligence and AI-driven insights.</p>
               <div className="hero-actions">
                 <a href="#download" className="btn-primary">Download App</a>
