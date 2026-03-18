@@ -54,6 +54,10 @@ class ApiService {
     return this.client.get('/reports/area', { params: { lat, lng, radius } });
   }
 
+  async getPublicReports() {
+    return this.client.get('/reports/public');
+  }
+
   async updateUser(id: string, data: { full_name?: string; email?: string; phone_number?: string; phone_verified?: boolean; language?: string }) {
     return this.client.put(`/admin/users/${id}`, data);
   }

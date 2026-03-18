@@ -2,6 +2,9 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import LandingPage from './pages/LandingPage';
+import PublicMapPage from './pages/PublicMapPage';
+import AboutPage from './pages/AboutPage';
+import ContactPage from './pages/ContactPage';
 import LoginPage from './pages/LoginPage';
 import DashboardLayout from './components/DashboardLayout';
 import OverviewPage from './pages/OverviewPage';
@@ -25,6 +28,9 @@ function App() {
       <Router>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/live-map" element={<PublicMapPage />} />
           <Route path="/admin" element={<LoginPage />} />
           <Route
             path="/dashboard"

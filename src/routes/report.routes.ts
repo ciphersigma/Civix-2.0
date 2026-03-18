@@ -106,6 +106,27 @@ export function createReportRouter(pool: Pool): Router {
   });
 
   /**
+   * GET /api/v1/reports/public
+   * Public endpoint — returns active reports for the live map (no auth required)
+   */
+  router.get('/public', async (req: Request, res: Response) => {
+    try {
+      const result = await pool.query(
+        `SELECT id, ST_Y(location::geometry) as latitude, ST_X(location::geometry) as longitude,
+                severity, report_type, created_at
+         FROM waterlogging_reports
+         WHERE is_active = true
+         ORDER BY created_at DESC
+         LIMIT 200`
+      );
+      return res.json({ success: true, reports: result.rows });
+    } catch (error) {
+      console.error('Public reports error:', error);
+      return res.status(200).json({ success: true, reports: [] });
+    }
+  });
+
+  /**
    * GET /api/v1/reports/area
    * Get aggregated reports for a specific area
    * Query parameters: lat, lng, radius (optional, defaults to 500m)
