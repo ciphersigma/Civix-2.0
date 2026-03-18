@@ -34,10 +34,7 @@ const LoginPage: React.FC = () => {
     <div className="login-page">
       <div className="login-card">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <rect width="32" height="32" rx="8" fill="#10b981"/>
-            <path d="M16 8L20 16L16 24L12 16L16 8Z" fill="white"/>
-          </svg>
+          <img src="/logo.png" alt="CIVIX" style={{ width: 32, height: 32, borderRadius: 8 }} />
           <div>
             <h1>CIVIX</h1>
             <p className="subtitle" style={{ marginBottom: 0 }}>Admin Dashboard</p>

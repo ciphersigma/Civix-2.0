@@ -32,10 +32,7 @@ const DashboardLayout: React.FC = () => {
     <div className="dashboard-layout">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-            <rect width="32" height="32" rx="8" fill="#10b981"/>
-            <path d="M16 8L20 16L16 24L12 16L16 8Z" fill="white"/>
-          </svg>
+          <img src="/logo.png" alt="CIVIX" style={{ width: 28, height: 28, borderRadius: 6 }} />
           <h2>CIVIX</h2>
         </div>
         <nav className="sidebar-nav">
