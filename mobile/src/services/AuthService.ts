@@ -7,6 +7,8 @@ interface AuthData {
   token: string;
   userId: string;
   phone: string;
+  fullName?: string;
+  email?: string;
 }
 
 export class AuthService {
@@ -14,9 +16,9 @@ export class AuthService {
    * Register / request OTP — calls backend POST /api/v1/auth/register
    * Backend sends SMS via Twilio and returns userId
    */
-  static async requestOTP(phoneNumber: string): Promise<{ userId: string; message: string }> {
+  static async requestOTP(phoneNumber: string, fullName?: string, email?: string): Promise<{ userId: string; message: string }> {
     try {
-      const response = await api.post('/auth/register', { phoneNumber });
+      const response = await api.post('/auth/register', { phoneNumber, fullName, email });
       return response.data;
     } catch (error: any) {
       if (error.offline) {

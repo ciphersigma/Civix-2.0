@@ -3,9 +3,10 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: #0f1117;
+  background: var(--bg-primary);
   position: relative;
   overflow: hidden;
+  transition: background 0.3s;
 }
 
 .login-page::before {
@@ -15,53 +16,59 @@
   left: -50%;
   width: 200%;
   height: 200%;
-  background: radial-gradient(ellipse at 30% 20%, rgba(59,130,246,0.08) 0%, transparent 50%),
-              radial-gradient(ellipse at 70% 80%, rgba(139,92,246,0.06) 0%, transparent 50%);
-  animation: drift 20s ease-in-out infinite alternate;
+  background: radial-gradient(ellipse at 30% 20%, rgba(59,130,246,0.06) 0%, transparent 50%),
+              radial-gradient(ellipse at 70% 80%, rgba(139,92,246,0.04) 0%, transparent 50%),
+              radial-gradient(ellipse at 50% 50%, rgba(16,185,129,0.03) 0%, transparent 40%);
+  animation: drift 25s ease-in-out infinite alternate;
 }
 
 @keyframes drift {
-  0% { transform: translate(0, 0); }
-  100% { transform: translate(-3%, -3%); }
+  0% { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(-3%, -3%) rotate(1deg); }
 }
 
 .login-card {
-  background: rgba(24,24,32,0.9);
-  backdrop-filter: blur(20px);
+  background: var(--bg-secondary);
+  backdrop-filter: blur(24px);
   padding: 48px 40px;
   border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid var(--border-primary);
   width: 100%;
   max-width: 420px;
   position: relative;
   z-index: 1;
-  box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+  box-shadow: var(--shadow-popup);
+  animation: fadeInUp 0.5s ease-out;
+  transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .login-card h1 {
   font-size: 22px;
   font-weight: 700;
-  color: #f4f4f5;
+  color: var(--text-primary);
   margin-bottom: 4px;
   letter-spacing: -0.3px;
 }
 
 .login-card .subtitle {
-  color: #71717a;
+  color: var(--text-faint);
   margin-bottom: 36px;
   font-size: 14px;
   font-weight: 400;
 }
 
-.form-group {
-  margin-bottom: 20px;
-}
+.form-group { margin-bottom: 20px; }
 
 .form-group label {
   display: block;
   margin-bottom: 8px;
   font-weight: 500;
-  color: #a1a1aa;
+  color: var(--text-tertiary);
   font-size: 13px;
   letter-spacing: 0.3px;
 }
@@ -69,21 +76,20 @@
 .form-group input {
   width: 100%;
   padding: 12px 16px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
   border-radius: 10px;
   font-size: 14px;
-  color: #f4f4f5;
-  transition: all 0.2s;
+  color: var(--text-primary);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
 }
 
-.form-group input::placeholder { color: #52525b; }
+.form-group input::placeholder { color: var(--text-ghost); }
 
 .form-group input:focus {
   border-color: rgba(59,130,246,0.5);
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-  background: rgba(255,255,255,0.06);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.08), 0 0 20px rgba(59,130,246,0.05);
 }
 
 button[type="submit"] {
@@ -97,27 +103,32 @@ button[type="submit"] {
   font-weight: 600;
   cursor: pointer;
   margin-top: 12px;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   letter-spacing: 0.3px;
+  position: relative;
+  overflow: hidden;
 }
 
 button[type="submit"]:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 8px 25px rgba(59,130,246,0.3);
+  box-shadow: 0 8px 30px rgba(59,130,246,0.25);
 }
 
-button[type="submit"]:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
+button[type="submit"]:active:not(:disabled) { transform: translateY(0); }
+button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .error-message {
-  background: rgba(239,68,68,0.1);
+  background: rgba(239,68,68,0.08);
   color: #f87171;
   padding: 12px 16px;
   border-radius: 10px;
   margin-bottom: 20px;
   font-size: 13px;
-  border: 1px solid rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.12);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }

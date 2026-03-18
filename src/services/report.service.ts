@@ -256,7 +256,7 @@ export class ReportService {
         return cached;
       }
 
-      // Query reports within specified radius and within 1-hour period
+      // Query reports within specified radius and within 24-hour period
       // ST_DWithin uses geography type for accurate distance calculation in meters
       const result = await this.pool.query(
         `SELECT 
@@ -273,7 +273,7 @@ export class ReportService {
          FROM waterlogging_reports
          WHERE is_active = true
            AND report_type = 'waterlogged'
-           AND created_at >= NOW() - INTERVAL '1 hour'
+           AND created_at >= NOW() - INTERVAL '24 hours'
            AND ST_DWithin(
              location,
              ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,

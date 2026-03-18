@@ -12,9 +12,9 @@ export function createAuthRouter(pool: Pool): Router {
    */
   router.post('/register', async (req: Request, res: Response) => {
     try {
-      const { phoneNumber } = req.body;
+      const { phoneNumber, fullName, email } = req.body;
 
-      console.log('Register request:', { phoneNumber });
+      console.log('Register request:', { phoneNumber, fullName, email });
 
       // Validate input
       if (!phoneNumber) {
@@ -25,7 +25,7 @@ export function createAuthRouter(pool: Pool): Router {
       }
 
       // Register user and send verification code
-      const result = await authService.registerUser(phoneNumber);
+      const result = await authService.registerUser(phoneNumber, fullName, email);
 
       console.log('Register result:', result);
 

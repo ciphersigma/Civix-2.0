@@ -22,8 +22,17 @@ export class ReportService {
    */
   static async submitReport(report: Report): Promise<any> {
     try {
-      // Try to submit to server
-      const response = await api.post('/reports', report);
+      // Transform to backend expected format
+      const payload = {
+        location: {
+          latitude: report.latitude,
+          longitude: report.longitude,
+          accuracy: 10, // default accuracy
+        },
+        severity: report.severity,
+        reportType: 'waterlogged',
+      };
+      const response = await api.post('/reports', payload);
       
       // Also store locally for offline viewing
       await this.storeLocalReport({ ...report, ...response.data });
@@ -62,9 +71,12 @@ export class ReportService {
       // Try to fetch from server
       const response = await api.get(`/reports/area?lat=${lat}&lng=${lng}&radius=${radius}`);
       
+      // API returns { areaStatus: { reports: [...] } } — extract the reports array
+      const areaStatus = response.data?.areaStatus;
+      const serverReports = areaStatus?.reports || [];
+      
       // Merge with local reports
       const localReports = await this.getLocalReports();
-      const serverReports = response.data;
       
       // Combine and deduplicate
       const allReports = [...serverReports, ...localReports];
@@ -147,7 +159,16 @@ export class ReportService {
       
       for (const report of pending) {
         try {
-          await api.post('/reports', report);
+          const payload = {
+            location: {
+              latitude: report.latitude,
+              longitude: report.longitude,
+              accuracy: 10,
+            },
+            severity: report.severity,
+            reportType: 'waterlogged',
+          };
+          await api.post('/reports', payload);
           synced++;
         } catch (error) {
           failed++;

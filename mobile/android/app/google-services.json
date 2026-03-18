@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "564648393937",
+    "project_id": "civix-c4f39",
+    "storage_bucket": "civix-c4f39.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:564648393937:android:0c9a1cb3c33377f56d99f0",
+        "android_client_info": {
+          "package_name": "com.waterloggingalert"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBW-_Ufv94FULj9movsoHwM11sESBNaNl4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

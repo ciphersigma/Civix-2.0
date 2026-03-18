@@ -39,14 +39,14 @@ export function createAdminRouter(pool: Pool): Router {
       const search = req.query.search as string;
       const offset = (page - 1) * limit;
 
-      let query = `SELECT id, phone_number, phone_verified, language, daily_report_count, last_report_date, created_at, updated_at FROM users`;
+      let query = `SELECT id, full_name, email, phone_number, phone_verified, language, daily_report_count, last_report_date, created_at, updated_at FROM users`;
       let countQuery = `SELECT COUNT(*) as count FROM users`;
       const params: any[] = [];
       const countParams: any[] = [];
 
       if (search) {
-        query += ` WHERE phone_number ILIKE $1`;
-        countQuery += ` WHERE phone_number ILIKE $1`;
+        query += ` WHERE (phone_number ILIKE $1 OR full_name ILIKE $1 OR email ILIKE $1)`;
+        countQuery += ` WHERE (phone_number ILIKE $1 OR full_name ILIKE $1 OR email ILIKE $1)`;
         params.push(`%${search}%`);
         countParams.push(`%${search}%`);
       }

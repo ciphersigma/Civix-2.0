@@ -3,6 +3,8 @@
 
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    full_name VARCHAR(100),
+    email VARCHAR(255),
     phone_number VARCHAR(15) UNIQUE NOT NULL,
     phone_verified BOOLEAN DEFAULT FALSE,
     verification_code VARCHAR(6),

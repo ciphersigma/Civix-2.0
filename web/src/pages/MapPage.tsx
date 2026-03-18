@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import ApiService from '../services/api';
+import { themed } from '../styles/theme';
 
-mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN || '';
-
+const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN || '';
 const SEVERITY_COLORS: Record<string, string> = { Low: '#eab308', Medium: '#f97316', High: '#ef4444' };
 
 const MapPage: React.FC = () => {
@@ -12,11 +12,17 @@ const MapPage: React.FC = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const [reports, setReports] = useState<any[]>([]);
   const [mapStyle, setMapStyle] = useState('dark-v11');
+  const [tokenMissing, setTokenMissing] = useState(false);
   const circleIds = useRef<string[]>([]);
-  let circleCounter = useRef(0);
+  const circleCounter = useRef(0);
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
+    if (!MAPBOX_TOKEN) {
+      setTokenMissing(true);
+      return;
+    }
+    mapboxgl.accessToken = MAPBOX_TOKEN;
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: `mapbox://styles/mapbox/${mapStyle}`,
@@ -66,9 +72,9 @@ const MapPage: React.FC = () => {
       type: 'geojson',
       data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] }, properties: {} },
     });
-    map.current.addLayer({ id, type: 'fill', source: id, paint: { 'fill-color': color, 'fill-opacity': 0.25 } });
+    map.current.addLayer({ id, type: 'fill', source: id, paint: { 'fill-color': color, 'fill-opacity': 0.2 } });
     const outlineId = `${id}-outline`;
-    map.current.addLayer({ id: outlineId, type: 'line', source: id, paint: { 'line-color': color, 'line-width': 2, 'line-opacity': 0.8 } });
+    map.current.addLayer({ id: outlineId, type: 'line', source: id, paint: { 'line-color': color, 'line-width': 2, 'line-opacity': 0.7 } });
     circleIds.current.push(id, outlineId);
     map.current.on('click', id, () => {
       new mapboxgl.Popup({ className: 'dark-popup' }).setLngLat([lng, lat]).setHTML(popup).addTo(map.current!);
@@ -82,11 +88,14 @@ const MapPage: React.FC = () => {
     reps.forEach((r: any) => {
       if (!r.latitude || !r.longitude) return;
       const color = SEVERITY_COLORS[r.severity] || '#71717a';
-      const status = r.is_active ? '<span style="color:#22c55e;font-weight:600">Active</span>' : '<span style="color:#71717a">Expired</span>';
-      const popup = `<div style="font-family:Inter,sans-serif;font-size:13px;line-height:1.6;color:#e4e4e7;background:#18181b;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.08)">
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${r.severity} Severity</div>
-        Type: ${r.report_type}<br/>Status: ${status}<br/>
-        <span style="color:#71717a">${new Date(r.created_at).toLocaleString()}</span>
+      const status = r.is_active
+        ? '<span style="color:#22c55e;font-weight:600">● Active</span>'
+        : '<span style="color:#52525b">Expired</span>';
+      const popup = `<div style="font-family:Inter,sans-serif;font-size:13px;line-height:1.7;color:#e4e4e7;background:rgba(18,18,27,0.95);backdrop-filter:blur(12px);padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);min-width:180px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px;color:#f4f4f5">${r.severity} Severity</div>
+        <div style="color:#a1a1aa">Type: ${r.report_type}</div>
+        <div>Status: ${status}</div>
+        <div style="color:#52525b;font-size:12px;margin-top:4px">${new Date(r.created_at).toLocaleString()}</div>
       </div>`;
       addCircle(Number(r.latitude), Number(r.longitude), 500, color, popup);
     });
@@ -99,14 +108,34 @@ const MapPage: React.FC = () => {
     map.current.once('style.load', () => { renderCircles(reports); });
   };
 
+  const activeCount = reports.filter(r => r.is_active).length;
+
+  if (tokenMissing) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 400, color: 'var(--text-faint)' }}>
+        <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>🗺️</div>
+        <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Mapbox token not configured</p>
+        <p style={{ fontSize: 13 }}>Set <code style={{ background: 'var(--bg-hover)', padding: '2px 6px', borderRadius: 4, color: 'var(--text-muted)' }}>REACT_APP_MAPBOX_TOKEN</code> in your <code style={{ background: 'var(--bg-hover)', padding: '2px 6px', borderRadius: 4, color: 'var(--text-muted)' }}>web/.env</code> file</p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#f4f4f5' }}>Map View</h2>
-          <span style={{ color: '#71717a', fontSize: 14 }}>{reports.length} reports on map</span>
+          <h2 style={themed.title}>Map View</h2>
+          <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
+            <span style={{ color: 'var(--text-faint)', fontSize: 13 }}>{reports.length} reports on map</span>
+            {activeCount > 0 && (
+              <span style={{ color: '#22c55e', fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+                {activeCount} active
+              </span>
+            )}
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 4, background: 'var(--bg-tertiary)', borderRadius: 10, padding: 3, border: '1px solid var(--border-primary)' }}>
           {[
             { id: 'dark-v11', label: 'Dark' },
             { id: 'streets-v12', label: 'Streets' },
@@ -114,26 +143,33 @@ const MapPage: React.FC = () => {
           ].map(s => (
             <button key={s.id} onClick={() => switchStyle(s.id)}
               style={{
-                padding: '6px 14px',
-                border: mapStyle === s.id ? '1px solid rgba(59,130,246,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                padding: '7px 16px',
+                border: 'none',
                 borderRadius: 8,
-                background: mapStyle === s.id ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.04)',
-                cursor: 'pointer', fontSize: 13, fontWeight: mapStyle === s.id ? 600 : 400,
-                color: mapStyle === s.id ? '#60a5fa' : '#a1a1aa',
-                transition: 'all 0.15s',
+                background: mapStyle === s.id ? 'rgba(59,130,246,0.15)' : 'transparent',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: mapStyle === s.id ? 600 : 400,
+                color: mapStyle === s.id ? '#60a5fa' : 'var(--text-muted)',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               }}>
               {s.label}
             </button>
           ))}
         </div>
       </div>
-      <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
-        <div ref={mapContainer} style={{ height: 'calc(100vh - 200px)', width: '100%' }} />
+      <div style={{
+        borderRadius: 16,
+        overflow: 'hidden',
+        border: '1px solid var(--border-primary)',
+        boxShadow: 'var(--shadow-card)',
+      }}>
+        <div ref={mapContainer} style={{ height: 'calc(100vh - 210px)', width: '100%' }} />
       </div>
-      <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+      <div style={{ display: 'flex', gap: 20, marginTop: 14 }}>
         {Object.entries(SEVERITY_COLORS).map(([sev, color]) => (
-          <div key={sev} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#71717a' }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />
+          <div key={sev} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-faint)' }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}40` }} />
             {sev}
           </div>
         ))}

@@ -243,6 +243,7 @@ export const HomeScreen = ({ navigation }: any) => {
       <MapboxGL.MapView
         style={StyleSheet.absoluteFillObject}
         styleURL="mapbox://styles/mapbox/streets-v12"
+        scaleBarEnabled={false}
         onPress={() => { setSelectedReport(null); setShowResults(false); Keyboard.dismiss(); }}>
         <MapboxGL.Camera
           ref={cameraRef}

@@ -43,7 +43,7 @@ export class AuthService {
   /**
    * Register a new user with phone number and send verification code
    */
-  async registerUser(phoneNumber: string): Promise<RegistrationResult> {
+  async registerUser(phoneNumber: string, fullName?: string, email?: string): Promise<RegistrationResult> {
     // Validate phone number format (basic validation)
     if (!phoneNumber || phoneNumber.length < 10) {
       throw new Error('Invalid phone number format');
@@ -65,24 +65,26 @@ export class AuthService {
       let userId: string;
 
       if (existingUser.rows.length > 0) {
-        // User exists, update verification code
+        // User exists, update verification code and profile fields
         userId = existingUser.rows[0].id;
         await this.pool.query(
           `UPDATE users 
            SET verification_code = $1, 
                verification_expires_at = $2,
+               full_name = COALESCE($3, full_name),
+               email = COALESCE($4, email),
                updated_at = NOW()
-           WHERE id = $3`,
-          [verificationCode, expiresAt, userId]
+           WHERE id = $5`,
+          [verificationCode, expiresAt, fullName || null, email || null, userId]
         );
         console.log(`Updated verification code for existing user ${userId}`);
       } else {
         // Create new user
         const result = await this.pool.query(
-          `INSERT INTO users (phone_number, verification_code, verification_expires_at)
-           VALUES ($1, $2, $3)
+          `INSERT INTO users (phone_number, full_name, email, verification_code, verification_expires_at)
+           VALUES ($1, $2, $3, $4, $5)
            RETURNING id`,
-          [phoneNumber, verificationCode, expiresAt]
+          [phoneNumber, fullName || null, email || null, verificationCode, expiresAt]
         );
         userId = result.rows[0].id;
         console.log(`Created new user ${userId}`);

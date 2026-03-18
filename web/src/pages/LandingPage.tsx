@@ -4,7 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import './LandingPage.css';
 
 // Mapbox public access token
-mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN || '';
+const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN || '';
 
 const LandingPage: React.FC = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -13,6 +13,8 @@ const LandingPage: React.FC = () => {
 
   useEffect(() => {
     if (!mapContainer.current) return;
+    if (!MAPBOX_TOKEN) return;
+    mapboxgl.accessToken = MAPBOX_TOKEN;
     if (map.current) return;
 
     try {

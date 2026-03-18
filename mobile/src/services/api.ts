@@ -1,12 +1,9 @@
 import axios, { AxiosError } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Production: Change this to your Vercel backend URL after deploying
-// e.g. 'https://waterlogging-api.vercel.app/api/v1'
-// For local dev: 'http://192.168.1.8:3000/api/v1'
-const API_BASE_URL = __DEV__
-  ? 'http://192.168.1.8:3000/api/v1'
-  : 'https://civix-2-0.vercel.app/api/v1';
+// Use production Vercel backend URL
+// For local dev testing, change to: 'http://<YOUR_LOCAL_IP>:3000/api/v1'
+const API_BASE_URL = 'https://civix-2-0.vercel.app/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
