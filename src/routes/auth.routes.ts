@@ -8,38 +8,18 @@ export function createAuthRouter(pool: Pool): Router {
 
   /**
    * POST /api/v1/auth/register
-   * Register a new user with phone number and send verification code
+   * Register with email, send OTP
    */
   router.post('/register', async (req: Request, res: Response) => {
     try {
-      const { phoneNumber, fullName, email } = req.body;
+      const { email, fullName, phoneNumber } = req.body;
+      if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
 
-      console.log('Register request:', { phoneNumber, fullName, email });
-
-      // Validate input
-      if (!phoneNumber) {
-        return res.status(400).json({
-          success: false,
-          message: 'Phone number is required'
-        });
-      }
-
-      // Register user and send verification code
-      const result = await authService.registerUser(phoneNumber, fullName, email);
-
-      console.log('Register result:', result);
-
-      return res.status(200).json({
-        success: true,
-        userId: result.userId,
-        message: result.message,
-      });
+      const result = await authService.registerUser(email, fullName, phoneNumber);
+      return res.status(200).json({ success: true, userId: result.userId, message: result.message });
     } catch (error) {
       console.error('Registration error:', error);
-      return res.status(500).json({
-        success: false,
-        message: error instanceof Error ? error.message : 'Registration failed'
-      });
+      return res.status(500).json({ success: false, message: error instanceof Error ? error.message : 'Registration failed' });
     }
   });
 
@@ -49,21 +29,12 @@ export function createAuthRouter(pool: Pool): Router {
    */
   router.post('/login', async (req: Request, res: Response) => {
     try {
-      const { phoneNumber } = req.body;
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
 
-      if (!phoneNumber) {
-        return res.status(400).json({ success: false, message: 'Phone number is required' });
-      }
-
-      const result = await authService.loginUser(phoneNumber);
-
-      return res.status(200).json({
-        success: true,
-        userId: result.userId,
-        message: result.message,
-      });
+      const result = await authService.loginUser(email);
+      return res.status(200).json({ success: true, userId: result.userId, message: result.message });
     } catch (error) {
-      console.error('Login error:', error);
       const msg = error instanceof Error ? error.message : 'Login failed';
       const status = msg.includes('No account found') ? 404 : 500;
       return res.status(status).json({ success: false, message: msg });
@@ -72,170 +43,54 @@ export function createAuthRouter(pool: Pool): Router {
 
   /**
    * POST /api/v1/auth/verify
-   * Verify phone number with verification code
+   * Verify email with OTP code
    */
   router.post('/verify', async (req: Request, res: Response) => {
     try {
-      const { phoneNumber, code } = req.body;
+      const { email, code } = req.body;
+      if (!email || !code) return res.status(400).json({ success: false, message: 'Email and code are required' });
 
-      console.log('Verify request:', { phoneNumber, code });
+      const result = await authService.verifyEmail(email, code);
+      if (!result.success) return res.status(400).json({ success: false, message: result.message });
 
-      // Validate input
-      if (!phoneNumber || !code) {
-        return res.status(400).json({
-          success: false,
-          message: 'Phone number and verification code are required'
-        });
-      }
-
-      // Verify phone number
-      const result = await authService.verifyPhone(phoneNumber, code);
-
-      console.log('Verify result:', result);
-
-      if (!result.success) {
-        return res.status(400).json({
-          success: false,
-          message: result.message
-        });
-      }
-
-      // Get userId from token
       const decoded = authService.validateToken(result.token!);
-
-      return res.status(200).json({
-        success: true,
-        token: result.token,
-        userId: decoded?.userId,
-        message: result.message
-      });
+      return res.status(200).json({ success: true, token: result.token, userId: decoded?.userId, message: result.message });
     } catch (error) {
-      console.error('Verification error:', error);
-      return res.status(500).json({
-        success: false,
-        message: error instanceof Error ? error.message : 'Verification failed'
-      });
+      return res.status(500).json({ success: false, message: error instanceof Error ? error.message : 'Verification failed' });
     }
   });
 
   /**
    * POST /api/v1/auth/refresh
-   * Refresh JWT token for authenticated user
    */
   router.post('/refresh', async (req: Request, res: Response) => {
     try {
-      // Get token from Authorization header
       const authHeader = req.headers.authorization;
-      
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({
-          success: false,
-          message: 'No token provided'
-        });
-      }
+      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ success: false, message: 'No token provided' });
 
-      const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+      const result = await authService.refreshToken(authHeader.substring(7));
+      if (!result.success) return res.status(401).json({ success: false, message: result.message });
 
-      // Refresh token
-      const result = await authService.refreshToken(token);
-
-      if (!result.success) {
-        return res.status(401).json({
-          success: false,
-          message: result.message
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        token: result.token,
-        message: result.message
-      });
+      return res.status(200).json({ success: true, token: result.token, message: result.message });
     } catch (error) {
-      console.error('Token refresh error:', error);
-      return res.status(500).json({
-        success: false,
-        message: error instanceof Error ? error.message : 'Token refresh failed'
-      });
-    }
-  });
-
-  /**
-   * POST /api/v1/auth/firebase-verify
-   * Verify Firebase ID token and sync user with our DB
-   */
-  router.post('/firebase-verify', async (req: Request, res: Response) => {
-    try {
-      const { firebaseToken, phoneNumber, fullName, email } = req.body;
-
-      if (!firebaseToken || !phoneNumber) {
-        return res.status(400).json({
-          success: false,
-          message: 'Firebase token and phone number are required',
-        });
-      }
-
-      const result = await authService.firebaseVerify(firebaseToken, phoneNumber, fullName, email);
-
-      if (!result.success) {
-        return res.status(401).json({ success: false, message: result.message });
-      }
-
-      return res.status(200).json({
-        success: true,
-        token: result.token,
-        userId: result.userId,
-        message: result.message,
-      });
-    } catch (error) {
-      console.error('Firebase verify error:', error);
-      return res.status(500).json({
-        success: false,
-        message: error instanceof Error ? error.message : 'Firebase verification failed',
-      });
+      return res.status(500).json({ success: false, message: 'Token refresh failed' });
     }
   });
 
   /**
    * POST /api/v1/auth/admin/login
-   * Admin login with email and password
    */
   router.post('/admin/login', async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
+      if (!email || !password) return res.status(400).json({ success: false, message: 'Email and password are required' });
 
-      console.log('Admin login request:', { email });
-
-      // Validate input
-      if (!email || !password) {
-        return res.status(400).json({
-          success: false,
-          message: 'Email and password are required'
-        });
-      }
-
-      // Authenticate admin
       const result = await authService.adminLogin(email, password);
+      if (!result.success) return res.status(401).json({ success: false, message: result.message });
 
-      if (!result.success) {
-        return res.status(401).json({
-          success: false,
-          message: result.message
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        token: result.token,
-        adminId: result.adminId,
-        message: result.message
-      });
+      return res.status(200).json({ success: true, token: result.token, adminId: result.adminId, message: result.message });
     } catch (error) {
-      console.error('Admin login error:', error);
-      return res.status(500).json({
-        success: false,
-        message: error instanceof Error ? error.message : 'Admin login failed'
-      });
+      return res.status(500).json({ success: false, message: 'Admin login failed' });
     }
   });
 
