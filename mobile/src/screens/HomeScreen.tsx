@@ -13,7 +13,6 @@ import {
   FlatList,
   PermissionsAndroid,
   Platform,
-  Modal,
 } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
 import Geolocation from 'react-native-geolocation-service';
@@ -62,8 +61,6 @@ export const HomeScreen = ({ navigation }: any) => {
   const [isOffline, setIsOffline] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [selectedReport, setSelectedReport] = useState<any>(null);
-  const [profileVisible, setProfileVisible] = useState(false);
-  const [userPhone, setUserPhone] = useState('');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<GeoResult[]>([]);
@@ -106,8 +103,6 @@ export const HomeScreen = ({ navigation }: any) => {
     setIsOffline(offline);
     const count = await ReportService.getPendingCount();
     setPendingCount(count);
-    const authData = await AuthService.getAuthData();
-    if (authData?.phone) setUserPhone(authData.phone);
 
     const hasPermission = await requestLocationPermission();
     if (hasPermission) {
@@ -214,21 +209,6 @@ export const HomeScreen = ({ navigation }: any) => {
     } catch { Alert.alert('Error', 'Sync failed'); }
   };
 
-  const handleLogout = () => {
-    setProfileVisible(false);
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          await AuthService.logout();
-          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-        },
-      },
-    ]);
-  };
-
   const totalReports = reports.length;
   const highCount = reports.filter((r: any) => r.severity === 'High').length;
   const medCount = reports.filter((r: any) => r.severity === 'Medium').length;
@@ -297,7 +277,7 @@ export const HomeScreen = ({ navigation }: any) => {
             </TouchableOpacity>
           )}
           {/* Profile button inside search bar */}
-          <TouchableOpacity onPress={() => setProfileVisible(true)} style={styles.profileBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={styles.profileBtn}>
             <Text style={styles.profileIcon}>👤</Text>
           </TouchableOpacity>
         </View>
@@ -391,27 +371,6 @@ export const HomeScreen = ({ navigation }: any) => {
         <Text style={styles.fabText}>Report</Text>
       </TouchableOpacity>
 
-      {/* Profile Modal */}
-      <Modal visible={profileVisible} transparent animationType="fade" onRequestClose={() => setProfileVisible(false)}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setProfileVisible(false)}>
-          <View style={[styles.profileMenu, { marginTop: statusBarHeight + 64 }]}>
-            <View style={styles.profileHeader}>
-              <View style={styles.profileAvatar}>
-                <Text style={styles.profileAvatarText}>👤</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.profileName}>{userPhone || 'Guest User'}</Text>
-                <Text style={styles.profileStatus}>{isOffline ? '📡 Offline' : '🟢 Online'}</Text>
-              </View>
-            </View>
-            <View style={styles.profileDivider} />
-            <TouchableOpacity style={styles.profileMenuItem} onPress={handleLogout} activeOpacity={0.6}>
-              <Text style={styles.logoutIcon}>🚪</Text>
-              <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </View>
   );
 };
@@ -524,29 +483,4 @@ const styles = StyleSheet.create({
   fabPlus: { fontSize: 20, color: '#fff', fontWeight: '300' },
   fabText: { fontSize: 15, color: '#fff', fontWeight: '700' },
 
-  // Profile modal
-  modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  profileMenu: {
-    marginHorizontal: 14, backgroundColor: '#fff', borderRadius: 16, padding: 16,
-    elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15, shadowRadius: 12,
-  },
-  profileHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-  },
-  profileAvatar: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#EEF2FF',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  profileAvatarText: { fontSize: 20 },
-  profileName: { fontSize: 15, fontWeight: '700', color: '#1F2937' },
-  profileStatus: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  profileDivider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 },
-  profileMenuItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10,
-  },
-  logoutIcon: { fontSize: 18 },
-  logoutText: { fontSize: 15, color: '#EF4444', fontWeight: '600' },
 });

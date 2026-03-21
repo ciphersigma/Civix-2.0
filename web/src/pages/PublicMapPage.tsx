@@ -12,8 +12,8 @@ const PublicMapPage: React.FC = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [reports, setReports] = useState<any[]>([]);
-  const [mapStyle, setMapStyle] = useState('dark-v11');
-  const [isDark, setIsDark] = useState(true);
+  const [mapStyle, setMapStyle] = useState('light-v11');
+  const [isDark, setIsDark] = useState(false);
   const circleIds = useRef<string[]>([]);
   const circleCounter = useRef(0);
 
@@ -159,6 +159,7 @@ const PublicMapPage: React.FC = () => {
           </div>
           <div className="pm-style-switcher">
             {[
+              { id: 'light-v11', label: 'Light' },
               { id: 'dark-v11', label: 'Dark' },
               { id: 'streets-v12', label: 'Streets' },
               { id: 'satellite-streets-v12', label: 'Satellite' },
@@ -169,7 +170,13 @@ const PublicMapPage: React.FC = () => {
               </button>
             ))}
           </div>
-          <button className="pm-theme-btn" onClick={toggleTheme}>{isDark ? '☀️' : '🌙'}</button>
+          <button className="pm-theme-btn" onClick={toggleTheme}>
+            {isDark ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+            )}
+          </button>
         </div>
       </header>
 
@@ -179,7 +186,6 @@ const PublicMapPage: React.FC = () => {
           <div ref={mapContainer} className="pm-map" />
         ) : (
           <div className="pm-no-token">
-            <span>🗺️</span>
             <p>Map unavailable — Mapbox token not configured</p>
           </div>
         )}

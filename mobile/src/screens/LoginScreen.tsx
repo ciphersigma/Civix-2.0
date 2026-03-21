@@ -63,13 +63,6 @@ export const LoginScreen = ({ navigation }: any) => {
     } finally { setLoading(false); }
   };
 
-  const handleSkip = () => {
-    Alert.alert('Skip Login', 'Reports will only be stored locally.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Continue', onPress: () => navigation.replace('Home') },
-    ]);
-  };
-
   return (
     <SafeAreaView style={s.container}>
       <StatusBar backgroundColor="#F8FAFC" barStyle="dark-content" />
@@ -128,9 +121,6 @@ export const LoginScreen = ({ navigation }: any) => {
             </>
           )}
 
-          <TouchableOpacity style={s.skipBtn} onPress={handleSkip} disabled={loading}>
-            <Text style={s.skipText}>Skip for now</Text>
-          </TouchableOpacity>
           <Text style={s.footer}>Works offline · Reports sync automatically</Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -160,7 +150,5 @@ const s = StyleSheet.create({
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   otpLinks: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14, paddingHorizontal: 4 },
   linkText: { color: '#6366F1', fontSize: 13, fontWeight: '500' },
-  skipBtn: { alignItems: 'center', paddingVertical: 14, marginTop: 12 },
-  skipText: { color: '#9CA3AF', fontSize: 14 },
   footer: { textAlign: 'center', color: '#D1D5DB', fontSize: 12, marginTop: 20 },
 });

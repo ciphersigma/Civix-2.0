@@ -87,15 +87,15 @@ const MapPage: React.FC = () => {
     clearCircles();
     reps.forEach((r: any) => {
       if (!r.latitude || !r.longitude) return;
-      const color = SEVERITY_COLORS[r.severity] || '#71717a';
+      const color = SEVERITY_COLORS[r.severity] || 'var(--text-muted)';
       const status = r.is_active
         ? '<span style="color:#22c55e;font-weight:600">● Active</span>'
         : '<span style="color:#52525b">Expired</span>';
-      const popup = `<div style="font-family:Inter,sans-serif;font-size:13px;line-height:1.7;color:#e4e4e7;background:rgba(18,18,27,0.95);backdrop-filter:blur(12px);padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);min-width:180px">
-        <div style="font-size:14px;font-weight:700;margin-bottom:6px;color:#f4f4f5">${r.severity} Severity</div>
-        <div style="color:#a1a1aa">Type: ${r.report_type}</div>
+      const popup = `<div style="font-family:Inter,sans-serif;font-size:13px;line-height:1.7;color:var(--text-secondary);background:var(--bg-secondary);backdrop-filter:blur(12px);padding:14px 16px;border-radius:12px;border:1px solid var(--border-primary);min-width:180px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text-primary)">${r.severity} Severity</div>
+        <div style="color:var(--text-muted)">Type: ${r.report_type}</div>
         <div>Status: ${status}</div>
-        <div style="color:#52525b;font-size:12px;margin-top:4px">${new Date(r.created_at).toLocaleString()}</div>
+        <div style="color:var(--text-faint);font-size:12px;margin-top:4px">${new Date(r.created_at).toLocaleString()}</div>
       </div>`;
       addCircle(Number(r.latitude), Number(r.longitude), 500, color, popup);
     });
@@ -113,7 +113,9 @@ const MapPage: React.FC = () => {
   if (tokenMissing) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 400, color: 'var(--text-faint)' }}>
-        <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>🗺️</div>
+        <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-faint)' }}><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+        </div>
         <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Mapbox token not configured</p>
         <p style={{ fontSize: 13 }}>Set <code style={{ background: 'var(--bg-hover)', padding: '2px 6px', borderRadius: 4, color: 'var(--text-muted)' }}>REACT_APP_MAPBOX_TOKEN</code> in your <code style={{ background: 'var(--bg-hover)', padding: '2px 6px', borderRadius: 4, color: 'var(--text-muted)' }}>web/.env</code> file</p>
       </div>
@@ -146,11 +148,11 @@ const MapPage: React.FC = () => {
                 padding: '7px 16px',
                 border: 'none',
                 borderRadius: 8,
-                background: mapStyle === s.id ? 'rgba(59,130,246,0.15)' : 'transparent',
+                background: mapStyle === s.id ? 'rgba(99,102,241,0.15)' : 'transparent',
                 cursor: 'pointer',
                 fontSize: 13,
                 fontWeight: mapStyle === s.id ? 600 : 400,
-                color: mapStyle === s.id ? '#60a5fa' : 'var(--text-muted)',
+                color: mapStyle === s.id ? '#818cf8' : 'var(--text-muted)',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               }}>
               {s.label}

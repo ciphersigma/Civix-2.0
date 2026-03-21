@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { ReportScreen } from '../screens/ReportScreen';
+import { ProfileScreen } from '../screens/ProfileScreen';
 import { AuthService } from '../services/AuthService';
 
 const Stack = createStackNavigator();
@@ -34,7 +35,8 @@ export const AppNavigator = () => {
       }}>
       <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Report" component={ReportScreen} options={{ title: 'Report Waterlogging', headerBackTitle: 'Map' }} />
+      <Stack.Screen name="Report" component={ReportScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 };

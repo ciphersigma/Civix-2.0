@@ -1,41 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import './LandingPage.css';
 
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN || '';
 
-const useCountUp = (end: number, duration = 2000) => {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) return;
-      let start = 0;
-      const step = end / (duration / 16);
-      const timer = setInterval(() => {
-        start += step;
-        if (start >= end) { setCount(end); clearInterval(timer); }
-        else setCount(Math.floor(start));
-      }, 16);
-      observer.disconnect();
-    }, { threshold: 0.3 });
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [end, duration]);
-  return { count, ref };
-};
-
 const LandingPage: React.FC = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const [isDark, setIsDark] = useState(true);
-  const [mobileMenu, setMobileMenu] = useState(false);
-
-  const stat1 = useCountUp(1200);
-  const stat2 = useCountUp(98);
-  const stat3 = useCountUp(50);
-  const stat4 = useCountUp(24);
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     if (!mapContainer.current || !MAPBOX_TOKEN) return;
@@ -66,328 +41,285 @@ const LandingPage: React.FC = () => {
     }
   }, [isDark]);
 
-  const Logo = () => (
-    <img src="/logo.png" alt="CIVIX" style={{ width: 32, height: 32, borderRadius: 8 }} />
-  );
-
   return (
     <div className={`landing ${isDark ? 'dark' : 'light'}`}>
       <div className="grid-bg" />
 
-      {/* ── Navbar ── */}
-      <nav className="navbar">
-        <div className="container nav-content">
-          <div className="logo"><Logo /><span>CIVIX</span></div>
-          <div className={`nav-menu ${mobileMenu ? 'open' : ''}`}>
-            <a href="#features" onClick={() => setMobileMenu(false)}>Features</a>
-            <a href="#how" onClick={() => setMobileMenu(false)}>How it Works</a>
-            <a href="/about" onClick={() => setMobileMenu(false)}>About</a>
-            <a href="/contact" onClick={() => setMobileMenu(false)}>Contact</a>
-            <a href="/live-map" onClick={() => setMobileMenu(false)}>Live Map</a>
-            <a href="#download" className="btn-nav" onClick={() => setMobileMenu(false)}>Get the App</a>
-            <button className="theme-toggle" onClick={() => setIsDark(!isDark)}>{isDark ? '☀️' : '🌙'}</button>
-          </div>
-          <button className="hamburger" onClick={() => setMobileMenu(!mobileMenu)}>
-            <span /><span /><span />
-          </button>
-        </div>
-      </nav>
+      <Navbar isDark={isDark} onToggleTheme={() => setIsDark(!isDark)} />
 
-      {/* ── Hero — centered, full-width ── */}
+      {/* ── Hero ── */}
       <section className="hero">
         <div className="hero-glow hero-glow-1" />
         <div className="hero-glow hero-glow-2" />
+        <div className="hero-glow hero-glow-3" />
+        <div className="hero-mesh" />
         <div className="container">
           <div className="hero-center fade-up">
+            <div className="hero-badge">
+              <span className="hero-badge-dot" />
+              <span>Real-time flood intelligence for Indian cities</span>
+            </div>
             <h1>
               Don't get caught in the<br />
               <span className="gradient-text">flood. Get ahead of it.</span>
             </h1>
             <p className="hero-sub">CIVIX is a crowdsourced platform that delivers real-time waterlogging alerts, helping citizens and city authorities navigate monsoon season safely.</p>
             <div className="hero-actions">
-              <a href="https://drive.google.com/uc?export=download&id=1KrmduD1MqWU4ke1O0y7WCbBRufps0nVM" target="_blank" rel="noreferrer" className="btn-primary btn-lg"><span className="btn-icon">📱</span> Download for Android</a>
+              <a href="https://drive.google.com/uc?export=download&id=1KrmduD1MqWU4ke1O0y7WCbBRufps0nVM" target="_blank" rel="noreferrer" className="btn-primary btn-lg">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download for Android
+              </a>
               <a href="#how" className="btn-secondary btn-lg">See How it Works →</a>
             </div>
           </div>
 
-          {/* Inline stats strip */}
-          <div className="hero-stats fade-up delay-1">
-            <div className="hero-stat" ref={stat1.ref}>
-              <span className="hero-stat-num">{stat1.count.toLocaleString()}+</span>
-              <span className="hero-stat-label">Active Users</span>
-            </div>
-            <div className="hero-stat-divider" />
-            <div className="hero-stat" ref={stat2.ref}>
-              <span className="hero-stat-num">{stat2.count}%</span>
-              <span className="hero-stat-label">Alert Accuracy</span>
-            </div>
-            <div className="hero-stat-divider" />
-            <div className="hero-stat" ref={stat3.ref}>
-              <span className="hero-stat-num">{stat3.count}+</span>
-              <span className="hero-stat-label">Cities Covered</span>
-            </div>
-            <div className="hero-stat-divider" />
-            <div className="hero-stat" ref={stat4.ref}>
-              <span className="hero-stat-num">{stat4.count}/7</span>
-              <span className="hero-stat-label">Always On</span>
-            </div>
-          </div>
-
-          {/* Phone + Map side by side showcase */}
-          <div className="hero-showcase fade-up delay-2">
-            <div className="showcase-phone">
-              <div className="phone-mockup">
-                <div className="phone-notch" />
-                <div className="phone-screen">
-                  <div className="phone-header">
-                    <span className="phone-title">🌊 CIVIX</span>
-                    <span className="phone-status">Live</span>
-                  </div>
-                  <div className="phone-map-placeholder">
-                    <div className="map-marker red" style={{top:'28%',left:'32%'}}><div className="marker-pulse"/><span>📍</span></div>
-                    <div className="map-marker yellow" style={{top:'52%',left:'65%'}}><div className="marker-pulse"/><span>📍</span></div>
-                    <div className="map-marker green" style={{top:'72%',left:'40%'}}><div className="marker-pulse"/><span>📍</span></div>
-                  </div>
-                  <div className="phone-alert">
-                    <div className="alert-icon">⚠️</div>
-                    <div><strong>High Alert</strong><br/><span>MG Road — Severe waterlogging</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="showcase-map">
+          {/* Hero visual — just the live map */}
+          <div className="hero-map-wrap fade-up delay-2">
+            <div className="hero-map-frame">
               {MAPBOX_TOKEN ? (
                 <div ref={mapContainer} className="mapbox-container" />
               ) : (
                 <div className="map-fallback">
-                  <span>🗺️</span>
-                  <p>Live map preview — Mumbai</p>
+                  <p>Live map — loading</p>
                 </div>
               )}
               <div className="map-legend">
-                <div className="legend-item"><span className="legend-dot red"/>High</div>
-                <div className="legend-item"><span className="legend-dot yellow"/>Medium</div>
-                <div className="legend-item"><span className="legend-dot green"/>Low</div>
+                <div className="legend-item"><span className="legend-dot red"/>Severe</div>
+                <div className="legend-item"><span className="legend-dot yellow"/>Moderate</div>
+                <div className="legend-item"><span className="legend-dot green"/>Clear</div>
+              </div>
+              <div className="hero-map-tag">
+                <span className="hero-map-live-dot" />
+                Live from your city
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Bento Features Grid ── */}
+      {/* ── Features — editorial layout ── */}
       <section className="features" id="features">
         <div className="container">
           <div className="section-head fade-up">
-            <div className="section-badge">Features</div>
-            <h2>Everything you need for<br /><span className="gradient-text">urban flood safety</span></h2>
+            <div className="section-badge">What CIVIX does</div>
+            <h2>Built for the chaos of<br /><span className="gradient-text">Indian monsoons</span></h2>
+            <p className="section-sub">Not another weather app. CIVIX is a ground-level intelligence network powered by the people who actually walk those streets.</p>
           </div>
-          <div className="bento-grid fade-up">
-            {/* Large card */}
-            <div className="bento-card bento-large">
-              <div className="bento-icon" style={{background:'rgba(99,102,241,0.1)',color:'#818cf8'}}>📡</div>
-              <h3>Real-time Alerts</h3>
-              <p>Get instant push notifications the moment waterlogging is reported near your location. Know before you step out.</p>
-              <div className="bento-visual">
-                <div className="notif-stack">
-                  <div className="notif-item notif-1">
-                    <span className="notif-dot" style={{background:'#ef4444'}}/>
-                    <div><strong>Severe Flooding</strong><span>MG Road, 5 min ago</span></div>
+
+          {/* Feature rows — alternating text/visual */}
+          <div className="feat-rows fade-up">
+            <div className="feat-row">
+              <div className="feat-text">
+                <span className="feat-label">Alerts that matter</span>
+                <h3>Know before you step out</h3>
+                <p>When someone reports waterlogging near you, you get a push notification within seconds. Not a forecast — an actual report from someone standing in the water right now.</p>
+                <div className="feat-proof">
+                  <span className="feat-proof-num">~30s</span>
+                  <span className="feat-proof-desc">average time from report to alert</span>
+                </div>
+              </div>
+              <div className="feat-visual feat-visual-alerts">
+                <div className="feat-alert-feed">
+                  <div className="feat-alert-item feat-alert-1">
+                    <div className="feat-alert-severity severe" />
+                    <div className="feat-alert-body">
+                      <span className="feat-alert-location">MG Road, Ahmedabad</span>
+                      <span className="feat-alert-time">just now</span>
+                    </div>
                   </div>
-                  <div className="notif-item notif-2">
-                    <span className="notif-dot" style={{background:'#f59e0b'}}/>
-                    <div><strong>Moderate Alert</strong><span>Andheri West, 12 min ago</span></div>
+                  <div className="feat-alert-item feat-alert-2">
+                    <div className="feat-alert-severity moderate" />
+                    <div className="feat-alert-body">
+                      <span className="feat-alert-location">Andheri West, Mumbai</span>
+                      <span className="feat-alert-time">4 min ago</span>
+                    </div>
                   </div>
-                  <div className="notif-item notif-3">
-                    <span className="notif-dot" style={{background:'#10b981'}}/>
-                    <div><strong>Cleared</strong><span>Bandra Station, 30 min ago</span></div>
+                  <div className="feat-alert-item feat-alert-3">
+                    <div className="feat-alert-severity low" />
+                    <div className="feat-alert-body">
+                      <span className="feat-alert-location">Bandra Station</span>
+                      <span className="feat-alert-time">12 min ago</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Small cards */}
-            <div className="bento-card bento-small">
-              <div className="bento-icon" style={{background:'rgba(245,158,11,0.1)',color:'#f59e0b'}}>🗺️</div>
-              <h3>Live Heatmap</h3>
-              <p>Interactive map with severity zones. Plan your route around danger areas in real-time.</p>
+            <div className="feat-row feat-row-reverse">
+              <div className="feat-text">
+                <span className="feat-label">Live heatmap</span>
+                <h3>See the city like locals see it</h3>
+                <p>Color-coded severity zones updated in real-time. Red means avoid, yellow means caution, green means clear. Plan your route before the auto driver refuses to go.</p>
+              </div>
+              <div className="feat-visual feat-visual-map">
+                <div className="feat-map-mock">
+                  <div className="feat-map-zone feat-zone-red" />
+                  <div className="feat-map-zone feat-zone-yellow" />
+                  <div className="feat-map-zone feat-zone-green" />
+                  <div className="feat-map-grid" />
+                  <div className="feat-map-pin pin-1"><span /></div>
+                  <div className="feat-map-pin pin-2"><span /></div>
+                  <div className="feat-map-pin pin-3"><span /></div>
+                </div>
+              </div>
             </div>
-            <div className="bento-card bento-small">
-              <div className="bento-icon" style={{background:'rgba(16,185,129,0.1)',color:'#10b981'}}>👥</div>
-              <h3>Community Reports</h3>
-              <p>Citizens report waterlogging with one tap. Crowdsourced data means faster, more accurate coverage.</p>
+
+            <div className="feat-row">
+              <div className="feat-text">
+                <span className="feat-label">Crowdsourced</span>
+                <h3>Crowdsourced. One tap to report.</h3>
+                <p>No government sensor needed. Citizens report waterlogging with GPS-verified location and severity. The more people report, the smarter the system gets.</p>
+                <div className="feat-proof">
+                  <span className="feat-proof-num">4hr</span>
+                  <span className="feat-proof-desc">auto-expiry keeps data fresh</span>
+                </div>
+              </div>
+              <div className="feat-visual feat-visual-crowd">
+                <div className="feat-report-demo">
+                  <div className="feat-report-step">
+                    <span className="feat-report-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+                    <div>
+                      <span className="feat-report-action">GPS location captured</span>
+                      <span className="feat-report-detail">Lat 23.0225, Lng 72.5714</span>
+                    </div>
+                  </div>
+                  <div className="feat-report-arrow">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                  </div>
+                  <div className="feat-report-step">
+                    <span className="feat-report-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+                    <div>
+                      <span className="feat-report-action">Severity tagged</span>
+                      <span className="feat-report-detail">High — knee-deep water</span>
+                    </div>
+                  </div>
+                  <div className="feat-report-arrow">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                  </div>
+                  <div className="feat-report-step">
+                    <span className="feat-report-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <div>
+                      <span className="feat-report-action">Live on the map</span>
+                      <span className="feat-report-detail">Nearby users alerted instantly</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="bento-card bento-small">
-              <div className="bento-icon" style={{background:'rgba(236,72,153,0.1)',color:'#ec4899'}}>📊</div>
-              <h3>Analytics Dashboard</h3>
-              <p>City authorities get trends, hotspot analysis, and historical data to plan infrastructure better.</p>
-            </div>
-            <div className="bento-card bento-small">
-              <div className="bento-icon" style={{background:'rgba(20,184,166,0.1)',color:'#14b8a6'}}>📱</div>
-              <h3>Works Offline</h3>
-              <p>Reports are stored locally and sync automatically when connectivity is restored.</p>
-            </div>
+          </div>
+
+          {/* Bottom capabilities — inline with subtle icons */}
+          <div className="feat-caps fade-up">
+            {[
+              { title: 'Offline mode', desc: 'Reports sync when you\'re back online' },
+              { title: 'GPS verified', desc: 'Location-accurate, tamper-proof reports' },
+              { title: 'Auto-expiry', desc: 'Stale reports clear after 4 hours' },
+              { title: 'Works anywhere', desc: 'GPS-based — no city restrictions' },
+            ].map((cap, i) => (
+              <div key={i} className="feat-cap">
+                <h4>{cap.title}</h4>
+                <p>{cap.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── How it Works — horizontal timeline ── */}
+      {/* ── How it Works — stacked steps ── */}
       <section className="how-section" id="how">
         <div className="container">
           <div className="section-head fade-up">
             <div className="section-badge">How it Works</div>
             <h2>Three steps to <span className="gradient-text">safer commutes</span></h2>
           </div>
-          <div className="timeline fade-up">
-            <div className="timeline-line" />
-            {[
-              { num: '1', icon: '📲', title: 'Download & Sign Up', desc: 'Get the CIVIX app. Create your account with just your phone number — quick Firebase OTP gets you started in seconds.' },
-              { num: '2', icon: '📍', title: 'Report Waterlogging', desc: 'See waterlogging? One tap to report it. Your GPS location and severity rating are shared with the community instantly.' },
-              { num: '3', icon: '🛡️', title: 'Stay Safe & Informed', desc: 'Receive real-time notifications. View the live heatmap. Plan safe routes. Help your city respond faster.' },
-            ].map((s, i) => (
-              <div key={i} className="timeline-step" style={{ animationDelay: `${i * 0.2}s` }}>
-                <div className="timeline-dot"><span>{s.num}</span></div>
-                <div className="timeline-card">
-                  <div className="timeline-icon">{s.icon}</div>
-                  <h3>{s.title}</h3>
-                  <p>{s.desc}</p>
-                </div>
+          <div className="steps-stack fade-up">
+            <div className="step-item">
+              <div className="step-num">01</div>
+              <div className="step-content">
+                <h3>Download & sign up</h3>
+                <p>Get the CIVIX app. Verify with your email OTP — takes about 30 seconds. No phone number, no social login, no nonsense.</p>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Before / After comparison ── */}
-      <section className="compare-section" id="stats">
-        <div className="container">
-          <div className="section-head fade-up">
-            <div className="section-badge">Impact</div>
-            <h2>Monsoon commute, <span className="gradient-text">reimagined</span></h2>
-          </div>
-          <div className="compare-grid fade-up">
-            <div className="compare-card compare-before">
-              <div className="compare-label">Without CIVIX</div>
-              <ul>
-                <li><span className="compare-x">✕</span> No warning before stepping out</li>
-                <li><span className="compare-x">✕</span> Stuck in knee-deep water</li>
-                <li><span className="compare-x">✕</span> No idea which roads are flooded</li>
-                <li><span className="compare-x">✕</span> Authorities react after damage</li>
-                <li><span className="compare-x">✕</span> Isolated, no community data</li>
-              </ul>
+              <div className="step-connector" />
             </div>
-            <div className="compare-vs">VS</div>
-            <div className="compare-card compare-after">
-              <div className="compare-label">With CIVIX</div>
-              <ul>
-                <li><span className="compare-check">✓</span> Real-time alerts before you leave</li>
-                <li><span className="compare-check">✓</span> Live heatmap to plan safe routes</li>
-                <li><span className="compare-check">✓</span> Community-powered flood data</li>
-                <li><span className="compare-check">✓</span> Authorities respond proactively</li>
-                <li><span className="compare-check">✓</span> 1,200+ citizens contributing daily</li>
-              </ul>
+            <div className="step-item">
+              <div className="step-num">02</div>
+              <div className="step-content">
+                <h3>Report what you see</h3>
+                <p>Standing in water? One tap. Your GPS location and severity rating go live instantly. The community sees it in real-time.</p>
+              </div>
+              <div className="step-connector" />
+            </div>
+            <div className="step-item">
+              <div className="step-num">03</div>
+              <div className="step-content">
+                <h3>Stay ahead of the flood</h3>
+                <p>Get alerts before you leave home. Check the live heatmap. Pick a dry route. Help your city respond faster.</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Testimonials ── */}
-      <section className="testimonials-section">
+      {/* ── Before / After — simple text contrast ── */}
+      <section className="contrast-section" id="stats">
         <div className="container">
-          <div className="section-head fade-up">
-            <div className="section-badge">What People Say</div>
-            <h2>Loved by communities <span className="gradient-text">across India</span></h2>
-          </div>
-          <div className="testimonials-grid fade-up">
-            {[
-              { name: 'Rahul M.', role: 'Daily Commuter, Mumbai', text: 'CIVIX saved me from getting stuck in knee-deep water twice this monsoon. The alerts are incredibly timely and accurate.', avatar: '👨' },
-              { name: 'Priya S.', role: 'City Planner, Bangalore', text: 'The admin dashboard gives us actionable data on waterlogging hotspots. It has transformed how we plan drainage infrastructure.', avatar: '👩' },
-              { name: 'Amit K.', role: 'Delivery Driver, Delhi', text: 'I check the live map before every delivery run during rains. It helps me avoid flooded streets and stay on schedule.', avatar: '🧑' },
-            ].map((t, i) => (
-              <div key={i} className="testimonial-card" style={{ animationDelay: `${i * 0.1}s` }}>
-                <div className="testimonial-quote">"</div>
-                <p>{t.text}</p>
-                <div className="testimonial-author">
-                  <span className="testimonial-avatar">{t.avatar}</span>
-                  <div>
-                    <strong>{t.name}</strong>
-                    <span>{t.role}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="contrast-layout fade-up">
+            <div className="contrast-col contrast-without">
+              <span className="contrast-tag">Without CIVIX</span>
+              <p>You step out, it's flooded. No one warned you. You're stuck. The municipal corporation finds out three days later from a newspaper photo.</p>
+            </div>
+            <div className="contrast-divider" />
+            <div className="contrast-col contrast-with">
+              <span className="contrast-tag">With CIVIX</span>
+              <p>Someone two streets away reports waterlogging. You get an alert before you leave. You check the heatmap, take a different route, and reach on time. The city sees the data in real-time.</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Tech Stack strip ── */}
-      <section className="tech-section fade-up">
-        <div className="container">
-          <p className="tech-label">Built with</p>
-          <div className="tech-strip">
-            {['React Native', 'Node.js', 'PostgreSQL', 'PostGIS', 'Mapbox', 'Firebase', 'Vercel'].map((t, i) => (
-              <span key={i} className="tech-tag">{t}</span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Download CTA ── */}
+      {/* ── Download CTA — clean ── */}
       <section className="cta-section" id="download">
         <div className="container">
-          <div className="cta-card fade-up">
-            <div className="cta-content">
-              <h2>Ready to stay safe<br />this monsoon?</h2>
-              <p>Download CIVIX and join thousands of citizens making their cities safer. Free, open-source, and available for Android.</p>
-              <div className="cta-actions">
-                <a href="https://drive.google.com/uc?export=download&id=1KrmduD1MqWU4ke1O0y7WCbBRufps0nVM" target="_blank" rel="noreferrer" className="btn-primary btn-lg">
-                  <span className="btn-icon">📱</span> Download for Android
-                </a>
-                <a href="https://github.com/ciphersigma/Civix-2.0" target="_blank" rel="noreferrer" className="btn-secondary btn-lg">
-                  ⭐ Star on GitHub
-                </a>
-              </div>
-            </div>
-            <div className="cta-visual">
-              <div className="cta-glow" />
-              <span className="cta-emoji">🌊</span>
+          <div className="cta-clean fade-up">
+            <h2>Monsoon season doesn't wait.<br /><span className="gradient-text">Neither should you.</span></h2>
+            <p className="cta-sub">Download CIVIX and join the citizens making their cities safer. Free. No ads. Available for Android.</p>
+            <div className="cta-actions">
+              <a href="https://drive.google.com/uc?export=download&id=1KrmduD1MqWU4ke1O0y7WCbBRufps0nVM" target="_blank" rel="noreferrer" className="btn-primary btn-lg">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download for Android
+              </a>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="footer">
+      {/* ── FAQ — accordion style ── */}
+      <section className="faq-section" id="faq">
         <div className="container">
-          <div className="footer-grid">
-            <div className="footer-brand">
-              <div className="footer-logo"><Logo /><span>CIVIX</span></div>
-              <p>Making communities safer during monsoon season through crowdsourced intelligence and real-time alerts.</p>
+          <div className="faq-layout fade-up">
+            <div className="faq-left">
+              <div className="section-badge">FAQ</div>
+              <h2>Common<br /><span className="gradient-text">questions</span></h2>
             </div>
-            <div className="footer-links">
-              <h4>Product</h4>
-              <a href="#features">Features</a>
-              <a href="#how">How it Works</a>
-              <a href="#download">Download</a>
-              <a href="#stats">Impact</a>
+            <div className="faq-list">
+              {[
+                { q: 'Is CIVIX free?', a: 'Yes. No ads, no premium tiers, no catch. It\'s a civic tech project built to help people.' },
+                { q: 'How accurate are the reports?', a: 'Every report is GPS-verified. Stale data auto-expires after 4 hours so you only see what\'s happening right now.' },
+                { q: 'Does it work offline?', a: 'Yes. Reports save locally and sync automatically when you\'re back online.' },
+                { q: 'Which cities does it cover?', a: 'Anywhere with GPS. We started in Ahmedabad and have active users in 50+ Indian cities.' },
+                { q: 'Is my data private?', a: 'We only collect location when you submit a report. No tracking, no data selling. Email is used only for login.' },
+              ].map((faq, i) => (
+                <details key={i} className="faq-item">
+                  <summary>{faq.q}</summary>
+                  <p>{faq.a}</p>
+                </details>
+              ))}
             </div>
-            <div className="footer-links">
-              <h4>Platform</h4>
-              <a href="/live-map">Live Map</a>
-              <a href="/about">About Us</a>
-              <a href="/contact">Contact Us</a>
-            </div>
-            <div className="footer-links">
-              <h4>Connect</h4>
-              <a href="https://github.com/ciphersigma/Civix-2.0" target="_blank" rel="noreferrer">GitHub</a>
-              <a href="#download">Android App</a>
-              <a href="mailto:prashantchettiyar@ieee.org">Email</a>
-            </div>
-          </div>
-          <div className="footer-bottom">
-            <p>© 2025 CIVIX. Built with ❤️ for safer cities.</p>
           </div>
         </div>
-      </footer>
+      </section>
+
+      <Footer isDark={isDark} />
     </div>
   );
 };

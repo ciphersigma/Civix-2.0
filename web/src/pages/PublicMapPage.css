@@ -1,6 +1,6 @@
 /* ── Public Map Page ── */
 .public-map { display: flex; flex-direction: column; height: 100vh; background: #050510; color: #fff; font-family: 'Inter', -apple-system, sans-serif; }
-.public-map.light { background: #fafbff; color: #0f172a; }
+.public-map.light { background: #f5f3ff; color: #0f172a; }
 
 /* Header */
 .pm-header { display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 1.25rem; background: rgba(5,5,16,0.8); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.06); z-index: 10; flex-shrink: 0; }

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { ReportService } from '../services/ReportService';
 import { AuthService } from '../services/AuthService';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Geolocation from 'react-native-geolocation-service';
 
 const SEVERITY_OPTIONS = [
@@ -81,6 +82,15 @@ export const ReportScreen = ({ navigation, route }: any) => {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <SafeAreaView style={{ backgroundColor: '#F8FAFC' }}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Report Waterlogging</Text>
+          <View style={{ width: 40 }} />
+        </View>
+      </SafeAreaView>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* Location card */}
         <View style={styles.locationCard}>
@@ -152,6 +162,10 @@ export const ReportScreen = ({ navigation, route }: any) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4 },
+  backIcon: { fontSize: 20, color: '#374151' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
   scroll: { padding: 20, paddingBottom: 40 },
 
   locationCard: {

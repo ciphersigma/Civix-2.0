@@ -209,7 +209,7 @@ export class AuthService {
   async getUserById(userId: string): Promise<User | null> {
     try {
       const result = await this.pool.query(
-        `SELECT id, phone_number, email, phone_verified, language, daily_report_count, last_report_date FROM users WHERE id = $1`,
+        `SELECT id, full_name, phone_number, email, phone_verified, language, daily_report_count, last_report_date, created_at FROM users WHERE id = $1`,
         [userId]
       );
       return result.rows[0] || null;

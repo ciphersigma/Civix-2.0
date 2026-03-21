@@ -78,6 +78,27 @@ export function createAuthRouter(pool: Pool): Router {
   });
 
   /**
+   * GET /api/v1/auth/me
+   * Get current user profile (requires auth token)
+   */
+  router.get('/me', async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ success: false, message: 'No token provided' });
+
+      const decoded = authService.validateToken(authHeader.substring(7));
+      if (!decoded) return res.status(401).json({ success: false, message: 'Invalid token' });
+
+      const user = await authService.getUserById(decoded.userId);
+      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+      return res.status(200).json(user);
+    } catch (error) {
+      return res.status(500).json({ success: false, message: 'Failed to fetch profile' });
+    }
+  });
+
+  /**
    * POST /api/v1/auth/admin/login
    */
   router.post('/admin/login', async (req: Request, res: Response) => {

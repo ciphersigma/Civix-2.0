@@ -50,6 +50,10 @@ export class AuthService {
     return (await this.getAuthData()) !== null;
   }
 
+  static async isOfflineMode(): Promise<boolean> {
+    return (await this.getAuthData()) === null;
+  }
+
   static async logout(): Promise<void> {
     await AsyncStorage.multiRemove([STORAGE_KEY, 'authToken']);
   }
