@@ -41,5 +41,20 @@ export function createFeedbackRouter(pool: Pool): Router {
     }
   });
 
+  // DELETE /api/v1/feedback/:id — delete feedback (admin)
+  router.delete('/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const result = await pool.query('DELETE FROM feedback WHERE id = $1 RETURNING id', [id]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Feedback not found' });
+      }
+      res.json({ message: 'Feedback deleted' });
+    } catch (error) {
+      console.error('Error deleting feedback:', error);
+      res.status(500).json({ error: 'Failed to delete feedback' });
+    }
+  });
+
   return router;
 }

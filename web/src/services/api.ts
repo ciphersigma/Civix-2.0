@@ -73,6 +73,10 @@ class ApiService {
   async submitFeedback(data: { name: string; email?: string; type: string; message: string }) {
     return this.client.post('/feedback', data);
   }
+
+  async deleteFeedback(id: number) {
+    return this.client.delete(`/feedback/${id}`);
+  }
 }
 
 // eslint-disable-next-line import/no-anonymous-default-export

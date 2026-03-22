@@ -16,6 +16,7 @@ import ReportsPage from './pages/ReportsPage';
 import UsersPage from './pages/UsersPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
+import FeedbackManagePage from './pages/FeedbackManagePage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 
@@ -58,6 +59,7 @@ function App() {
             <Route path="reports" element={<ReportsPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="feedback" element={<FeedbackManagePage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Routes>
