@@ -31,9 +31,9 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div style={styles.page} className="login-page-split">
+    <div className="login-page-split">
       {/* Left Panel */}
-      <div style={styles.left} className="login-left-panel">
+      <div className="login-left-panel">
         <div className="login-left-grid" />
         <div className="login-left-orb login-left-orb-1" />
         <div className="login-left-orb login-left-orb-2" />
@@ -64,14 +64,14 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* Right Panel */}
-      <div style={styles.right} className="login-right-panel">
-        <div style={styles.rightTop}>
+      <div className="login-right-panel">
+        <div className="login-right-top">
           <Link to="/" style={styles.backLink}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
             Back to Home
           </Link>
         </div>
-        <div style={styles.formWrap}>
+        <div className="login-form-wrap">
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
             <img src="/logo.png" alt="CIVIX" style={{ width: 60, height: 60, borderRadius: 14, objectFit: 'contain' }} />
           </div>
@@ -115,24 +115,6 @@ const LoginPage: React.FC = () => {
 };
 
 const styles: Record<string, React.CSSProperties> = {
-  page: {
-    display: 'flex',
-    minHeight: '100vh',
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    background: '#f5f3ff',
-  },
-
-  /* ── Left Panel — matches website indigo palette ── */
-  left: {
-    width: '45%',
-    background: 'linear-gradient(160deg, #4338ca, #6366f1, #4338ca)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '3rem',
-    position: 'relative',
-    overflow: 'hidden',
-  },
   leftContent: { position: 'relative', zIndex: 5, maxWidth: 400 },
   leftLogo: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 40 },
   leftBrand: { fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' },
@@ -161,21 +143,6 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   featureText: { fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.9)' },
-
-  /* ── Right Panel — light indigo tinted like website ── */
-  right: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column' as const,
-    background: '#f5f3ff',
-    minHeight: '100vh',
-  },
-  rightTop: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '20px 32px',
-  },
   backLink: {
     display: 'flex',
     alignItems: 'center',
@@ -184,16 +151,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 500,
     color: '#6366f1',
     textDecoration: 'none',
-  },
-  formWrap: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column' as const,
-    justifyContent: 'center',
-    maxWidth: 420,
-    width: '100%',
-    margin: '0 auto',
-    padding: '0 32px',
   },
   formTitle: {
     textAlign: 'center' as const,
