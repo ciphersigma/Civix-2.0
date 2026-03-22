@@ -87,4 +87,14 @@
   .site-footer { padding: 3rem 0 2rem; }
   .sf-top { grid-template-columns: 1fr; gap: 2rem; }
   .sf-bottom { flex-direction: column; gap: 0.35rem; text-align: center; }
+  .sf-desc { max-width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .site-footer { padding: 2.5rem 0 1.5rem; }
+  .sf-container { padding: 0 1rem; }
+  .sf-logo { font-size: 1.1rem; }
+  .sf-desc { font-size: 0.85rem; }
+  .sf-col a { font-size: 0.82rem; }
+  .sf-col h4 { font-size: 0.72rem; }
 }

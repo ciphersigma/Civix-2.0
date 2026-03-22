@@ -1,0 +1,314 @@
+/* ── About Page — editorial layout ── */
+
+.about-wrap {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Hero */
+.about-hero {
+  padding-top: 1rem;
+  margin-bottom: 4rem;
+}
+.about-eyebrow {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #6366f1;
+  margin-bottom: 1rem;
+}
+.about-hero h1 {
+  font-size: 2.8rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin: 0 0 1.25rem;
+}
+.about-hero-lead {
+  font-size: 1.1rem;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.75;
+  max-width: 600px;
+}
+.static-page.light .about-hero-lead { color: rgba(15,23,42,0.55); }
+
+/* Two-column story */
+.about-story-section {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 3rem;
+  align-items: start;
+  margin-bottom: 4rem;
+  padding-bottom: 4rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.static-page.light .about-story-section { border-bottom-color: rgba(99,102,241,0.08); }
+.about-col-left h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+}
+.about-col-left p {
+  font-size: 0.95rem;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.8;
+  margin: 0 0 1rem;
+}
+.about-col-left p:last-child { margin-bottom: 0; }
+.static-page.light .about-col-left p { color: rgba(15,23,42,0.55); }
+
+/* Pull quote */
+.about-pull-quote {
+  position: relative;
+  padding: 1.5rem 0 0 1.5rem;
+  margin-top: 0.5rem;
+  border-left: 2px solid rgba(99,102,241,0.25);
+}
+.about-pq-mark {
+  position: absolute;
+  top: -0.25rem;
+  left: 1.5rem;
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: rgba(99,102,241,0.15);
+}
+.about-pull-quote p {
+  font-size: 1.05rem;
+  font-style: italic;
+  color: rgba(255,255,255,0.6);
+  line-height: 1.7;
+  margin: 0;
+}
+.static-page.light .about-pull-quote p { color: rgba(15,23,42,0.6); }
+
+/* What we built */
+.about-what {
+  margin-bottom: 4rem;
+  padding-bottom: 4rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.static-page.light .about-what { border-bottom-color: rgba(99,102,241,0.08); }
+.about-what h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+}
+.about-what > p {
+  font-size: 0.95rem;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.8;
+  margin: 0 0 1rem;
+  max-width: 680px;
+}
+.static-page.light .about-what > p { color: rgba(15,23,42,0.55); }
+
+/* Inline stats — horizontal strip */
+.about-stats-inline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 2rem;
+  padding: 1.25rem 0;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.static-page.light .about-stats-inline { border-top-color: rgba(99,102,241,0.08); }
+.about-stat {
+  flex: 1;
+  text-align: center;
+}
+.about-stat-val {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #818cf8, #10b981);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.15rem;
+}
+.about-stat-desc {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+.static-page.light .about-stat-desc { color: rgba(15,23,42,0.35); }
+.about-stat-sep {
+  width: 1px;
+  height: 36px;
+  background: linear-gradient(180deg, transparent, rgba(99,102,241,0.15), transparent);
+}
+
+/* Who it's for — left-aligned text blocks */
+.about-who {
+  margin-bottom: 4rem;
+  padding-bottom: 4rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.static-page.light .about-who { border-bottom-color: rgba(99,102,241,0.08); }
+.about-who h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 2rem;
+}
+.about-who-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+.about-who-item h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: #6366f1;
+}
+.about-who-item p {
+  font-size: 0.92rem;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.75;
+  margin: 0;
+  max-width: 620px;
+}
+.static-page.light .about-who-item p { color: rgba(15,23,42,0.55); }
+
+/* Tech — tag pills */
+.about-tech {
+  margin-bottom: 4rem;
+}
+.about-tech h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.5rem;
+}
+.about-tech > p {
+  font-size: 0.92rem;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.7;
+  margin: 0 0 1.5rem;
+}
+.static-page.light .about-tech > p { color: rgba(15,23,42,0.5); }
+.about-tech-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.about-tech-tag {
+  padding: 0.5rem 1.1rem;
+  background: rgba(99,102,241,0.06);
+  border: 1px solid rgba(99,102,241,0.1);
+  border-radius: 100px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #a5b4fc;
+  transition: all 0.2s;
+}
+.about-tech-tag:hover {
+  background: rgba(99,102,241,0.12);
+  border-color: rgba(99,102,241,0.2);
+}
+.static-page.light .about-tech-tag {
+  color: #6366f1;
+  background: rgba(99,102,241,0.05);
+  border-color: rgba(99,102,241,0.12);
+}
+
+/* Bottom CTA */
+.about-bottom-cta {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-top: 1rem;
+}
+.about-bottom-cta h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin: 0 0 0.75rem;
+}
+.about-bottom-cta p {
+  font-size: 0.95rem;
+  color: rgba(255,255,255,0.45);
+  margin: 0 0 2rem;
+  line-height: 1.7;
+}
+.static-page.light .about-bottom-cta p { color: rgba(15,23,42,0.5); }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .about-hero { margin-bottom: 3rem; }
+  .about-hero h1 { font-size: 2rem; }
+  .about-hero-lead { font-size: 1rem; }
+  .about-story-section {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-bottom: 3rem;
+    padding-bottom: 3rem;
+  }
+  .about-what { margin-bottom: 3rem; padding-bottom: 3rem; }
+  .about-who { margin-bottom: 3rem; padding-bottom: 3rem; }
+  .about-tech { margin-bottom: 3rem; }
+  .about-stats-inline {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem 0;
+  }
+  .about-stat-sep {
+    width: 50%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.12), transparent);
+  }
+  .about-stat-val { font-size: 1.3rem; }
+  .about-bottom-cta h2 { font-size: 1.6rem; }
+  .about-who-item p { max-width: 100%; }
+  .about-col-left h2,
+  .about-what h2,
+  .about-who h2,
+  .about-tech h2 { font-size: 1.3rem; }
+  .sp-btn-row { flex-direction: column; align-items: stretch; }
+  .sp-btn-row .sp-btn { text-align: center; justify-content: center; }
+}
+
+@media (max-width: 480px) {
+  .about-wrap { padding: 0 1rem; }
+  .about-hero { margin-bottom: 2.5rem; }
+  .about-hero h1 { font-size: 1.65rem; line-height: 1.15; }
+  .about-hero-lead { font-size: 0.92rem; line-height: 1.7; }
+  .about-eyebrow { font-size: 0.68rem; margin-bottom: 0.75rem; }
+  .about-story-section { gap: 1.5rem; margin-bottom: 2.5rem; padding-bottom: 2.5rem; }
+  .about-col-left h2,
+  .about-what h2,
+  .about-who h2,
+  .about-tech h2 { font-size: 1.15rem; margin-bottom: 0.75rem; }
+  .about-col-left p,
+  .about-what > p,
+  .about-who-item p,
+  .about-tech > p { font-size: 0.88rem; }
+  .about-pull-quote { padding-left: 1rem; }
+  .about-pull-quote p { font-size: 0.95rem; }
+  .about-pq-mark { font-size: 2.5rem; left: 1rem; }
+  .about-who-grid { gap: 1.5rem; }
+  .about-who-item h3 { font-size: 0.95rem; }
+  .about-who h2 { margin-bottom: 1.25rem; }
+  .about-tech-list { gap: 0.5rem; }
+  .about-tech-tag { padding: 0.4rem 0.9rem; font-size: 0.78rem; }
+  .about-stats-inline { gap: 0.6rem; margin-top: 1.5rem; }
+  .about-stat-val { font-size: 1.2rem; }
+  .about-stat-desc { font-size: 0.7rem; }
+  .about-what { margin-bottom: 2.5rem; padding-bottom: 2.5rem; }
+  .about-who { margin-bottom: 2.5rem; padding-bottom: 2.5rem; }
+  .about-tech { margin-bottom: 2.5rem; }
+  .about-bottom-cta h2 { font-size: 1.3rem; }
+  .about-bottom-cta p { font-size: 0.88rem; margin-bottom: 1.5rem; }
+}

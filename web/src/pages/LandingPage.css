@@ -330,4 +330,22 @@
   .hero-center h1 { font-size: 2rem; }
   .hero { padding: 7rem 0 3rem; }
   .btn-lg { padding: 0.85rem 1.5rem; font-size: 0.92rem; }
+  .container { padding: 0 1rem; }
+  .section-head h2 { font-size: 1.65rem; }
+  .hero-map-frame { height: 200px; border-radius: 12px; }
+  .map-legend { gap: 0.5rem; padding: 0.4rem 0.7rem; border-radius: 8px; }
+  .legend-item { font-size: 0.68rem; }
+  .hero-map-tag { font-size: 0.68rem; padding: 0.3rem 0.7rem; }
+  .feat-text h3 { font-size: 1.2rem; }
+  .feat-visual-map { height: 180px; }
+  .step-content h3 { font-size: 1.05rem; }
+  .step-content p { font-size: 0.85rem; }
+  .cta-clean h2 { font-size: 1.5rem; }
+  .faq-item summary { font-size: 0.88rem; padding: 1rem 0; }
+  .faq-item p { font-size: 0.85rem; }
+  .faq-left h2 { font-size: 1.75rem; }
+  .hero-stats { padding: 1rem; border-radius: 14px; }
+  .hero-stat-num { font-size: 1.5rem; }
+  .proof-item { padding: 0.75rem; }
+  .proof-num { font-size: 1.3rem; }
 }

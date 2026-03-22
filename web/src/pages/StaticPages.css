@@ -141,6 +141,20 @@
 @media (max-width: 480px) {
   .sp-numbers-section { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
   .sp-hero-section h1 { font-size: 1.75rem; }
+  .sp-container { padding: 0 1rem; }
+  .sp-card { padding: 1.5rem; border-radius: 14px; }
+  .sp-number-card { padding: 1rem; border-radius: 12px; }
+  .sp-number-value { font-size: 1.4rem; }
+  .sp-form { padding: 1.5rem; border-radius: 16px; }
+  .sp-contact-card { padding: 1.25rem; border-radius: 12px; }
+  .sp-btn { padding: 0.65rem 1.25rem; font-size: 0.85rem; border-radius: 10px; }
+  .sp-submit-btn { padding: 0.75rem; font-size: 0.9rem; }
+  .sp-hero-sub { font-size: 0.95rem; }
+  .sp-section h2 { font-size: 1.25rem; }
+  .sp-legal-section h2 { font-size: 1.1rem; }
+  .sp-legal-section p { font-size: 0.85rem; }
+  .sp-legal-list li { font-size: 0.85rem; }
+  .sp-legal-card { padding: 1rem 1.25rem; border-radius: 12px; }
 }
 
 /* ── Legal / Privacy Page ── */

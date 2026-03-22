@@ -24,6 +24,7 @@ const Footer: React.FC<FooterProps> = ({ isDark }) => {
             <Link to="/live-map">Live Map</Link>
             <Link to="/about">About Us</Link>
             <Link to="/contact">Contact</Link>
+            <Link to="/feedback">Feedback</Link>
             <Link to="/privacy">Privacy Policy</Link>
           </div>
           <div className="sf-col">

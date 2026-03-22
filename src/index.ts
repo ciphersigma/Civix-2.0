@@ -6,6 +6,7 @@ import { initRedis, closeRedis } from './config/redis';
 import { createAuthRouter } from './routes/auth.routes';
 import { createReportRouter } from './routes/report.routes';
 import { createAdminRouter } from './routes/admin.routes';
+import { createFeedbackRouter } from './routes/feedback.routes';
 import { startReportExpiryJob, stopReportExpiryJob } from './jobs/report-expiry.job';
 
 // Load environment variables
@@ -61,6 +62,7 @@ app.use('/api/v1/reports', createReportRouter(pool));
 
 // Mount admin routes
 app.use('/api/v1/admin', createAdminRouter(pool));
+app.use('/api/v1/feedback', createFeedbackRouter(pool));
 
 // Initialize server and Redis
 const startServer = async () => {

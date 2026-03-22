@@ -230,8 +230,20 @@
   .main-content { margin-left: 60px; }
   .content { padding: 16px; }
   .header { padding: 12px 16px; }
+  .header h1 { font-size: 14px; }
   .logout-btn-sidebar {
     justify-content: center;
     padding: 10px;
   }
+}
+
+@media (max-width: 480px) {
+  .sidebar { width: 50px; }
+  .main-content { margin-left: 50px; }
+  .content { padding: 12px; }
+  .header { padding: 10px 12px; }
+  .header h1 { font-size: 13px; }
+  .header-right { gap: 6px; }
+  .nav-item { padding: 8px; }
+  .sidebar-nav { padding: 8px 6px; }
 }

@@ -1,0 +1,137 @@
+/* ── Privacy Page — editorial layout ── */
+
+.priv-wrap {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Hero */
+.priv-hero {
+  padding-top: 1rem;
+  margin-bottom: 4rem;
+}
+.priv-eyebrow {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #6366f1;
+  margin-bottom: 1rem;
+}
+.priv-hero h1 {
+  font-size: 2.8rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin: 0 0 1rem;
+}
+.priv-hero-lead {
+  font-size: 0.92rem;
+  color: rgba(255,255,255,0.4);
+  font-style: italic;
+}
+.static-page.light .priv-hero-lead { color: rgba(15,23,42,0.4); }
+
+/* Sections — separated by subtle dividers */
+.priv-section {
+  margin-bottom: 3rem;
+  padding-bottom: 3rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.priv-section:last-of-type { border-bottom: none; padding-bottom: 0; }
+.static-page.light .priv-section { border-bottom-color: rgba(99,102,241,0.08); }
+
+.priv-section > h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.85rem;
+}
+.priv-section > p {
+  font-size: 0.92rem;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.8;
+  margin: 0 0 0.75rem;
+  max-width: 680px;
+}
+.priv-section > p:last-child { margin-bottom: 0; }
+.static-page.light .priv-section > p { color: rgba(15,23,42,0.6); }
+.priv-section a {
+  color: #a5b4fc;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.priv-section a:hover { color: #818cf8; }
+.static-page.light .priv-section a { color: #6366f1; }
+
+/* Prose blocks — indigo h3, flowing text */
+.priv-prose-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  margin-top: 0.5rem;
+}
+.priv-prose-block h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 0.4rem;
+  color: #6366f1;
+}
+.priv-prose-block p {
+  font-size: 0.92rem;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.8;
+  margin: 0;
+  max-width: 640px;
+}
+.static-page.light .priv-prose-block p { color: rgba(15,23,42,0.6); }
+
+/* List — arrow bullets */
+.priv-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.priv-list li {
+  font-size: 0.92rem;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.75;
+  padding-left: 1.5rem;
+  position: relative;
+}
+.static-page.light .priv-list li { color: rgba(15,23,42,0.6); }
+.priv-list li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: #6366f1;
+  font-weight: 600;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .priv-hero { margin-bottom: 3rem; }
+  .priv-hero h1 { font-size: 2rem; }
+  .priv-section { margin-bottom: 2.5rem; padding-bottom: 2.5rem; }
+  .priv-section > h2 { font-size: 1.15rem; }
+}
+
+@media (max-width: 480px) {
+  .priv-wrap { padding: 0 1rem; }
+  .priv-hero { margin-bottom: 2.5rem; }
+  .priv-hero h1 { font-size: 1.65rem; }
+  .priv-eyebrow { font-size: 0.68rem; }
+  .priv-section > h2 { font-size: 1.05rem; }
+  .priv-section > p { font-size: 0.85rem; }
+  .priv-prose-block h3 { font-size: 0.92rem; }
+  .priv-prose-block p { font-size: 0.85rem; }
+  .priv-prose-blocks { gap: 1.25rem; }
+  .priv-list li { font-size: 0.85rem; }
+}

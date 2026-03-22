@@ -65,6 +65,14 @@ class ApiService {
   async deleteUser(id: string) {
     return this.client.delete(`/admin/users/${id}`);
   }
+
+  async getFeedback() {
+    return this.client.get('/feedback');
+  }
+
+  async submitFeedback(data: { name: string; email?: string; type: string; message: string }) {
+    return this.client.post('/feedback', data);
+  }
 }
 
 // eslint-disable-next-line import/no-anonymous-default-export

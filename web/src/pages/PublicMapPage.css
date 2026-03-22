@@ -58,7 +58,19 @@
 /* Responsive */
 @media (max-width: 768px) {
   .pm-header { flex-direction: column; gap: 0.5rem; padding: 0.5rem 0.75rem; }
-  .pm-header-right { flex-wrap: wrap; justify-content: center; }
+  .pm-header-left { width: 100%; justify-content: center; }
+  .pm-header-right { flex-wrap: wrap; justify-content: center; width: 100%; }
   .pm-stats-bar { gap: 0.35rem; }
+  .pm-style-switcher { flex-wrap: wrap; justify-content: center; }
   .pm-footer { flex-direction: column; gap: 0.35rem; text-align: center; }
+  .pm-footer-right { flex-wrap: wrap; justify-content: center; }
+}
+
+@media (max-width: 480px) {
+  .pm-header { padding: 0.4rem 0.5rem; gap: 0.4rem; }
+  .pm-stat-chip { padding: 0.25rem 0.5rem; font-size: 0.72rem; }
+  .pm-style-btn { padding: 0.25rem 0.5rem; font-size: 0.72rem; }
+  .pm-title { font-size: 0.78rem; }
+  .pm-logo span { font-size: 0.95rem; }
+  .pm-footer { padding: 0.4rem 0.75rem; font-size: 0.72rem; }
 }

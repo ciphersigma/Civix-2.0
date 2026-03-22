@@ -20,7 +20,8 @@ const SCHEMA_FILES = [
   '01_users.sql',
   '02_waterlogging_reports.sql',
   '03_notifications.sql',
-  '04_admin_users.sql'
+  '04_admin_users.sql',
+  '06_feedback.sql'
 ];
 
 async function runMigration() {
