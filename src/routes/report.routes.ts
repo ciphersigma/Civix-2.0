@@ -111,11 +111,17 @@ export function createReportRouter(pool: Pool): Router {
    */
   router.get('/public', async (req: Request, res: Response) => {
     try {
+      // Also expire old reports inline so is_active stays accurate
+      await pool.query(
+        `UPDATE waterlogging_reports SET is_active = false, updated_at = NOW()
+         WHERE is_active = true AND created_at < NOW() - INTERVAL '4 hours'`
+      );
+
       const result = await pool.query(
         `SELECT id, ST_Y(location::geometry) as latitude, ST_X(location::geometry) as longitude,
                 severity, report_type, created_at
          FROM waterlogging_reports
-         WHERE is_active = true
+         WHERE is_active = true AND created_at > NOW() - INTERVAL '4 hours'
          ORDER BY created_at DESC
          LIMIT 200`
       );

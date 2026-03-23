@@ -11,8 +11,8 @@ export function createAdminRouter(pool: Pool): Router {
       const [usersResult, reportsResult, activeReportsResult, severityResult, todayResult] = await Promise.all([
         pool.query('SELECT COUNT(*) as count FROM users'),
         pool.query('SELECT COUNT(*) as count FROM waterlogging_reports'),
-        pool.query("SELECT COUNT(*) as count FROM waterlogging_reports WHERE is_active = true AND report_type = 'waterlogged'"),
-        pool.query("SELECT severity, COUNT(*) as count FROM waterlogging_reports WHERE is_active = true GROUP BY severity"),
+        pool.query("SELECT COUNT(*) as count FROM waterlogging_reports WHERE is_active = true AND report_type = 'waterlogged' AND created_at > NOW() - INTERVAL '4 hours'"),
+        pool.query("SELECT severity, COUNT(*) as count FROM waterlogging_reports WHERE is_active = true AND created_at > NOW() - INTERVAL '4 hours' GROUP BY severity"),
         pool.query("SELECT COUNT(*) as count FROM waterlogging_reports WHERE created_at >= CURRENT_DATE"),
       ]);
 

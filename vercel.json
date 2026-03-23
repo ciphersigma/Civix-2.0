@@ -1,12 +1,26 @@
 {
   "version": 2,
+  "crons": [
+    {
+      "path": "/api/cron/expire-reports",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "builds": [
     {
       "src": "api/index.ts",
       "use": "@vercel/node"
+    },
+    {
+      "src": "api/cron/expire-reports.ts",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
+    {
+      "src": "/api/cron/expire-reports",
+      "dest": "api/cron/expire-reports.ts"
+    },
     {
       "src": "/(.*)",
       "dest": "api/index.ts"
