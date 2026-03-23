@@ -77,6 +77,31 @@ class ApiService {
   async deleteFeedback(id: number) {
     return this.client.delete(`/feedback/${id}`);
   }
+
+  // API Keys
+  async getApiKeys() {
+    return this.client.get('/admin/api-keys');
+  }
+
+  async createApiKey(data: { partnerName: string; permissions?: string[]; rateLimit?: number; webhookUrl?: string; expiresAt?: string }) {
+    return this.client.post('/admin/api-keys', data);
+  }
+
+  async updateApiKey(id: string, data: { partnerName?: string; permissions?: string[]; rateLimit?: number; isActive?: boolean; webhookUrl?: string; expiresAt?: string }) {
+    return this.client.put(`/admin/api-keys/${id}`, data);
+  }
+
+  async deleteApiKey(id: string) {
+    return this.client.delete(`/admin/api-keys/${id}`);
+  }
+
+  async getApiKeyUsage(id: string) {
+    return this.client.get(`/admin/api-keys/${id}/usage`);
+  }
+
+  async regenerateApiSecret(id: string) {
+    return this.client.post(`/admin/api-keys/${id}/regenerate`);
+  }
 }
 
 // eslint-disable-next-line import/no-anonymous-default-export

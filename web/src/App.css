@@ -35,11 +35,11 @@
 }
 
 [data-theme="light"] {
-  --bg-primary: #f8f9fb;
-  --bg-secondary: rgba(255,255,255,0.95);
+  --bg-primary: #ffffff;
+  --bg-secondary: #ffffff;
   --bg-tertiary: rgba(0,0,0,0.02);
-  --bg-sidebar: rgba(255,255,255,0.97);
-  --bg-header: rgba(255,255,255,0.9);
+  --bg-sidebar: #ffffff;
+  --bg-header: rgba(255,255,255,0.95);
   --bg-input: rgba(0,0,0,0.03);
   --bg-hover: rgba(0,0,0,0.04);
   --bg-active: rgba(99,102,241,0.08);

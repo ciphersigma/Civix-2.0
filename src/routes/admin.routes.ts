@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { Pool } from 'pg';
+import crypto from 'crypto';
 
 export function createAdminRouter(pool: Pool): Router {
   const router = Router();
@@ -198,6 +199,172 @@ export function createAdminRouter(pool: Pool): Router {
     } catch (error) {
       console.error('Delete user error:', error);
       return res.status(500).json({ message: 'Failed to delete user' });
+    }
+  });
+
+  // ==================== API KEY MANAGEMENT ====================
+
+  // GET /api/v1/admin/api-keys - List all API keys
+  router.get('/api-keys', async (_req: Request, res: Response) => {
+    try {
+      const result = await pool.query(
+        `SELECT id, partner_name, api_key, permissions, rate_limit, is_active,
+                last_used_at, request_count, webhook_url, created_at, expires_at
+         FROM api_keys ORDER BY created_at DESC`,
+      );
+      return res.json({ keys: result.rows });
+    } catch (error) {
+      console.error('List API keys error:', error);
+      return res.status(500).json({ message: 'Failed to fetch API keys' });
+    }
+  });
+
+  // POST /api/v1/admin/api-keys - Create a new API key
+  router.post('/api-keys', async (req: Request, res: Response) => {
+    try {
+      const { partnerName, permissions, rateLimit, webhookUrl, expiresAt } = req.body;
+      if (!partnerName) {
+        return res.status(400).json({ message: 'Partner name is required' });
+      }
+
+      const apiKey = 'civix_' + crypto.randomBytes(24).toString('hex');
+      const apiSecret = crypto.randomBytes(32).toString('hex');
+      const secretHash = crypto.createHash('sha256').update(apiSecret).digest('hex');
+
+      const perms = permissions || ['read:reports'];
+      const limit = rateLimit || 1000;
+
+      const result = await pool.query(
+        `INSERT INTO api_keys (partner_name, api_key, secret_hash, permissions, rate_limit, webhook_url, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id, partner_name, api_key, permissions, rate_limit, is_active, webhook_url, created_at, expires_at`,
+        [partnerName, apiKey, secretHash, perms, limit, webhookUrl || null, expiresAt || null],
+      );
+
+      // Return the secret only once — it can't be retrieved later
+      return res.status(201).json({
+        key: result.rows[0],
+        secret: apiSecret,
+        message: 'API key created. Save the secret — it cannot be retrieved again.',
+      });
+    } catch (error) {
+      console.error('Create API key error:', error);
+      return res.status(500).json({ message: 'Failed to create API key' });
+    }
+  });
+
+  // PUT /api/v1/admin/api-keys/:id - Update an API key
+  router.put('/api-keys/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { partnerName, permissions, rateLimit, isActive, webhookUrl, expiresAt } = req.body;
+
+      const fields: string[] = [];
+      const values: any[] = [];
+      let idx = 1;
+
+      if (partnerName !== undefined) { fields.push(`partner_name = $${idx++}`); values.push(partnerName); }
+      if (permissions !== undefined) { fields.push(`permissions = $${idx++}`); values.push(permissions); }
+      if (rateLimit !== undefined) { fields.push(`rate_limit = $${idx++}`); values.push(rateLimit); }
+      if (isActive !== undefined) { fields.push(`is_active = $${idx++}`); values.push(isActive); }
+      if (webhookUrl !== undefined) { fields.push(`webhook_url = $${idx++}`); values.push(webhookUrl); }
+      if (expiresAt !== undefined) { fields.push(`expires_at = $${idx++}`); values.push(expiresAt); }
+
+      if (fields.length === 0) {
+        return res.status(400).json({ message: 'No fields to update' });
+      }
+
+      fields.push('updated_at = NOW()');
+      values.push(id);
+
+      const result = await pool.query(
+        `UPDATE api_keys SET ${fields.join(', ')} WHERE id = $${idx}
+         RETURNING id, partner_name, api_key, permissions, rate_limit, is_active, webhook_url, created_at, expires_at`,
+        values,
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: 'API key not found' });
+      }
+
+      return res.json({ key: result.rows[0], message: 'API key updated' });
+    } catch (error) {
+      console.error('Update API key error:', error);
+      return res.status(500).json({ message: 'Failed to update API key' });
+    }
+  });
+
+  // DELETE /api/v1/admin/api-keys/:id - Delete an API key
+  router.delete('/api-keys/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const result = await pool.query('DELETE FROM api_keys WHERE id = $1 RETURNING id', [id]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: 'API key not found' });
+      }
+      return res.json({ message: 'API key deleted' });
+    } catch (error) {
+      console.error('Delete API key error:', error);
+      return res.status(500).json({ message: 'Failed to delete API key' });
+    }
+  });
+
+  // GET /api/v1/admin/api-keys/:id/usage - Get usage stats for an API key
+  router.get('/api-keys/:id/usage', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const [total, hourly, endpoints] = await Promise.all([
+        pool.query('SELECT COUNT(*) as count FROM api_request_logs WHERE api_key_id = $1', [id]),
+        pool.query(
+          `SELECT date_trunc('hour', created_at) as hour, COUNT(*) as count
+           FROM api_request_logs WHERE api_key_id = $1 AND created_at > NOW() - INTERVAL '24 hours'
+           GROUP BY hour ORDER BY hour`,
+          [id],
+        ),
+        pool.query(
+          `SELECT endpoint, method, COUNT(*) as count, AVG(response_time_ms)::int as avg_time
+           FROM api_request_logs WHERE api_key_id = $1 AND created_at > NOW() - INTERVAL '7 days'
+           GROUP BY endpoint, method ORDER BY count DESC LIMIT 10`,
+          [id],
+        ),
+      ]);
+
+      return res.json({
+        totalRequests: parseInt(total.rows[0].count),
+        hourlyUsage: hourly.rows,
+        topEndpoints: endpoints.rows,
+      });
+    } catch (error) {
+      console.error('API key usage error:', error);
+      return res.status(500).json({ message: 'Failed to fetch usage data' });
+    }
+  });
+
+  // POST /api/v1/admin/api-keys/:id/regenerate - Regenerate secret
+  router.post('/api-keys/:id/regenerate', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const newSecret = crypto.randomBytes(32).toString('hex');
+      const secretHash = crypto.createHash('sha256').update(newSecret).digest('hex');
+
+      const result = await pool.query(
+        `UPDATE api_keys SET secret_hash = $1, updated_at = NOW() WHERE id = $2
+         RETURNING id, partner_name, api_key`,
+        [secretHash, id],
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: 'API key not found' });
+      }
+
+      return res.json({
+        key: result.rows[0],
+        secret: newSecret,
+        message: 'Secret regenerated. Save it — it cannot be retrieved again.',
+      });
+    } catch (error) {
+      console.error('Regenerate secret error:', error);
+      return res.status(500).json({ message: 'Failed to regenerate secret' });
     }
   });
 

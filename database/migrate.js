@@ -21,7 +21,9 @@ const SCHEMA_FILES = [
   '02_waterlogging_reports.sql',
   '03_notifications.sql',
   '04_admin_users.sql',
-  '06_feedback.sql'
+  '05_firebase_uid.sql',
+  '06_feedback.sql',
+  '07_api_keys.sql'
 ];
 
 async function runMigration() {

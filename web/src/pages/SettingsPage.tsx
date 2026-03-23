@@ -60,7 +60,7 @@ const SettingsPage: React.FC = () => {
               <p style={sectionSub}>Core platform settings and thresholds</p>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }} className="settings-fields-grid">
             <Field label="Report Expiry Time" suffix="hours" value={reportExpiry} onChange={setReportExpiry} hint="Reports older than this are marked expired" />
             <Field label="Notification Rate Limit" suffix="hours" value={notifRate} onChange={setNotifRate} hint="Min interval between rain notifications" />
             <Field label="Daily Report Limit" suffix="per user" value={dailyLimit} onChange={setDailyLimit} hint="Max reports a user can submit per day" />

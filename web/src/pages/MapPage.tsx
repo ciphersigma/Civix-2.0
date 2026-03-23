@@ -124,7 +124,7 @@ const MapPage: React.FC = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }} className="map-header">
         <div>
           <h2 style={themed.title}>Map View</h2>
           <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>

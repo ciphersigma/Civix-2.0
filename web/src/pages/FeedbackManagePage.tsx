@@ -46,12 +46,12 @@ const FeedbackManagePage: React.FC = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }} className="dash-page-header">
         <div>
           <h2 style={themed.title}>Feedback</h2>
           <p style={themed.subtitle}>{feedback.length} total submissions</p>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6 }} className="dash-filter-row">
           {['all', 'suggestion', 'bug', 'feature', 'other'].map(t => (
             <button key={t} onClick={() => setFilter(t)} style={{
               ...filterBtn,
@@ -63,7 +63,7 @@ const FeedbackManagePage: React.FC = () => {
         </div>
       </div>
 
-      <div style={themed.card}>
+      <div style={themed.card} className="dash-table-card">
         {loading ? (
           <div style={themed.empty}>Loading...</div>
         ) : filtered.length === 0 ? (

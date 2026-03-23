@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import ApiService from '../services/api';
+import { themed } from '../styles/theme';
 
 const SeverityBadge: React.FC<{severity: string}> = ({severity}) => {
   const colors: Record<string,string> = { Low: '#eab308', Medium: '#f97316', High: '#ef4444' };
-  const c = colors[severity] || '#52525b';
+  const c = colors[severity] || 'var(--text-faint)';
   return <span style={{ background: `${c}22`, color: c, padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, border: `1px solid ${c}33` }}>{severity}</span>;
 };
 
@@ -31,69 +32,63 @@ const ReportsPage: React.FC = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+      <div className="dash-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#f4f4f5' }}>Reports</h2>
-          <p style={{ margin: '4px 0 0', color: '#71717a', fontSize: 14 }}>{total} total reports</p>
+          <h2 style={themed.title}>Reports</h2>
+          <p style={themed.subtitle}>{total} total reports</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <select value={severity} onChange={e => { setSeverity(e.target.value); setPage(1); }} style={selectStyle}>
+        <div className="dash-page-header-actions" style={{ display: 'flex', gap: 8 }}>
+          <select value={severity} onChange={e => { setSeverity(e.target.value); setPage(1); }} style={themed.select}>
             <option value="">All Severities</option>
             <option value="Low">Low</option>
             <option value="Medium">Medium</option>
             <option value="High">High</option>
           </select>
-          <select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} style={selectStyle}>
+          <select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} style={themed.select}>
             <option value="">All Status</option>
             <option value="active">Active</option>
             <option value="expired">Expired</option>
           </select>
         </div>
       </div>
-      <div style={cardStyle}>
-        {loading ? <p style={{ textAlign: 'center', color: '#71717a', padding: 40 }}>Loading...</p> :
-         reports.length === 0 ? <p style={{ textAlign: 'center', color: '#71717a', padding: 40 }}>No reports found</p> : (
+      <div className="dash-table-card" style={themed.card}>
+        {loading ? <div style={themed.empty}>Loading...</div> :
+         reports.length === 0 ? <div style={themed.empty}>No reports found</div> : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr>
               {['Severity','Type','Status','Location','Created'].map(h => (
-                <th key={h} style={thStyle}>{h}</th>
+                <th key={h} style={themed.th}>{h}</th>
               ))}
             </tr></thead>
             <tbody>
               {reports.map((r: any) => (
                 <tr key={r.id} style={{ transition: 'background 0.15s' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                  <td style={tdStyle}><SeverityBadge severity={r.severity} /></td>
-                  <td style={tdStyle}>{r.report_type}</td>
-                  <td style={tdStyle}>
-                    {r.is_active ? <span style={{ color: '#22c55e', fontWeight: 600 }}>Active</span> : <span style={{ color: '#52525b' }}>Expired</span>}
+                  <td style={themed.td}><SeverityBadge severity={r.severity} /></td>
+                  <td style={themed.td}>{r.report_type}</td>
+                  <td style={themed.td}>
+                    {r.is_active ? <span style={{ color: '#22c55e', fontWeight: 600 }}>Active</span> : <span style={{ color: 'var(--text-faint)' }}>Expired</span>}
                   </td>
-                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 13, color: '#a1a1aa' }}>
+                  <td style={{ ...themed.td, fontFamily: 'monospace', fontSize: 13, color: 'var(--text-muted)' }}>
                     {r.latitude ? `${Number(r.latitude).toFixed(4)}, ${Number(r.longitude).toFixed(4)}` : 'N/A'}
                   </td>
-                  <td style={{ ...tdStyle, color: '#71717a' }}>{new Date(r.created_at).toLocaleString()}</td>
+                  <td style={{ ...themed.td, color: 'var(--text-muted)' }}>{new Date(r.created_at).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
         {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1} style={paginationBtn}>← Prev</button>
-            <span style={{ color: '#71717a', fontSize: 14 }}>Page {page} of {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages} style={paginationBtn}>Next →</button>
+          <div style={themed.paginationRow}>
+            <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1} style={themed.paginationBtn}>Prev</button>
+            <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>Page {page} of {totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages} style={themed.paginationBtn}>Next</button>
           </div>
         )}
       </div>
     </div>
   );
 };
-
-const cardStyle: React.CSSProperties = { background: 'rgba(24,24,32,0.8)', borderRadius: 14, padding: 24, border: '1px solid rgba(255,255,255,0.06)' };
-const selectStyle: React.CSSProperties = { padding: '8px 14px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, fontSize: 14, background: 'rgba(255,255,255,0.04)', color: '#d4d4d8', outline: 'none', cursor: 'pointer' };
-const thStyle: React.CSSProperties = { textAlign: 'left', padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 12, color: '#71717a', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' };
-const tdStyle: React.CSSProperties = { padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 14, color: '#d4d4d8' };
-const paginationBtn: React.CSSProperties = { padding: '6px 16px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, cursor: 'pointer', color: '#a1a1aa', fontSize: 13, fontWeight: 500 };
 
 export default ReportsPage;

@@ -31,7 +31,7 @@ export const AppNavigator = () => {
       initialRouteName={initialRoute}
       screenOptions={{
         headerStyle: { backgroundColor: '#F8FAFC', elevation: 0, shadowOpacity: 0 },
-        headerTintColor: '#1F2937',
+        headerTintColor: '#1E293B',
       }}>
       <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />

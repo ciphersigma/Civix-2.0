@@ -1,8 +1,9 @@
-import { api } from './api';
+﻿import { api } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const REPORTS_STORAGE_KEY = '@local_reports';
-const PENDING_REPORTS_KEY = '@pending_reports';
+const REPORTS_KEY = '@local_reports';
+const PENDING_KEY = '@pending_reports';
+const DESC_KEY = '@report_descriptions';
 
 interface Report {
   id?: string;
@@ -10,207 +11,169 @@ interface Report {
   longitude: number;
   severity: string;
   description?: string;
+  report_type?: string;
   userId: string;
+  created_at?: string;
   createdAt?: string;
   isLocal?: boolean;
 }
 
 export class ReportService {
-  /**
-   * Submit a waterlogging report
-   * Stores locally if server is unavailable and syncs later
-   */
   static async submitReport(report: Report): Promise<any> {
+    const payload = {
+      location: {
+        latitude: report.latitude,
+        longitude: report.longitude,
+        accuracy: 10,
+      },
+      severity: report.severity,
+      reportType: 'waterlogged',
+    };
     try {
-      // Transform to backend expected format
-      const payload = {
-        location: {
-          latitude: report.latitude,
-          longitude: report.longitude,
-          accuracy: 10, // default accuracy
-        },
-        severity: report.severity,
-        reportType: 'waterlogged',
-      };
-      const response = await api.post('/reports', payload);
-      
-      // Also store locally for offline viewing
-      await this.storeLocalReport({ ...report, ...response.data });
-      
-      return response.data;
-    } catch (error: any) {
-      // If offline, store report locally and queue for sync
-      if (error.offline) {
-        console.log('Server unavailable - storing report locally');
-        
-        const localReport: Report = {
+      const resp = await api.post('/reports', payload);
+      const srv = resp && resp.data ? resp.data.report : null;
+      try {
+        if (srv && srv.id && report.description) {
+          await ReportService.saveDesc(srv.id, report.description);
+        }
+      } catch (e) { /* ignore */ }
+      return srv || { success: true };
+    } catch (err: any) {
+      if (err && err.offline) {
+        const loc: Report = {
           ...report,
-          id: `local_${Date.now()}`,
-          createdAt: new Date().toISOString(),
+          id: 'local_' + Date.now(),
+          created_at: new Date().toISOString(),
           isLocal: true,
         };
-        
-        // Store in local reports
-        await this.storeLocalReport(localReport);
-        
-        // Queue for sync when online
-        await this.queuePendingReport(localReport);
-        
-        return localReport;
+        await ReportService.storeLoc(loc);
+        await ReportService.queuePend(loc);
+        try {
+          if (loc.id && report.description) {
+            await ReportService.saveDesc(loc.id, report.description);
+          }
+        } catch (e) { /* ignore */ }
+        return loc;
       }
-      throw error;
+      const m = (err && err.response && err.response.data && err.response.data.message)
+        ? err.response.data.message
+        : (err && err.message ? err.message : 'Failed to submit report');
+      throw new Error(m);
     }
   }
 
-  /**
-   * Get reports for an area
-   * Falls back to local reports if server is unavailable
-   */
-  static async getAreaReports(lat: number, lng: number, radius = 5000): Promise<Report[]> {
+  static async getAreaReports(lat: number, lng: number, radius: number = 5000): Promise<any[]> {
     try {
-      // Try to fetch from server
-      const response = await api.get(`/reports/area?lat=${lat}&lng=${lng}&radius=${radius}`);
-      
-      // API returns { areaStatus: { reports: [...] } } — extract the reports array
-      const areaStatus = response.data?.areaStatus;
-      const serverReports = areaStatus?.reports || [];
-      
-      // Merge with local reports
-      const localReports = await this.getLocalReports();
-      
-      // Combine and deduplicate
-      const allReports = [...serverReports, ...localReports];
-      const uniqueReports = this.deduplicateReports(allReports);
-      
-      return uniqueReports;
-    } catch (error: any) {
-      // If offline, return only local reports
-      if (error.offline) {
-        console.log('Server unavailable - using local reports only');
-        return await this.getLocalReports();
+      const resp = await api.get('/reports/public');
+      const serverReports: any[] = (resp && resp.data && resp.data.reports) ? resp.data.reports : [];
+      const normalized = [];
+      for (let i = 0; i < serverReports.length; i++) {
+        const r = serverReports[i];
+        const rlat = (r.location && r.location.latitude != null) ? r.location.latitude : r.latitude;
+        const rlng = (r.location && r.location.longitude != null) ? r.location.longitude : r.longitude;
+        if (rlat == null || rlng == null || isNaN(Number(rlat)) || isNaN(Number(rlng))) {
+          continue;
+        }
+        normalized.push({
+          id: r.id,
+          latitude: rlat,
+          longitude: rlng,
+          severity: r.severity,
+          report_type: r.reportType || r.report_type,
+          created_at: r.createdAt || r.created_at,
+        });
       }
-      throw error;
-    }
-  }
-
-  /**
-   * Store report locally
-   */
-  private static async storeLocalReport(report: Report): Promise<void> {
-    try {
-      const stored = await AsyncStorage.getItem(REPORTS_STORAGE_KEY);
-      const reports: Report[] = stored ? JSON.parse(stored) : [];
-      
-      // Add new report
-      reports.unshift(report);
-      
-      // Keep only last 100 reports
-      const trimmedReports = reports.slice(0, 100);
-      
-      await AsyncStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(trimmedReports));
-    } catch (error) {
-      console.error('Failed to store local report:', error);
-    }
-  }
-
-  /**
-   * Get locally stored reports
-   */
-  private static async getLocalReports(): Promise<Report[]> {
-    try {
-      const stored = await AsyncStorage.getItem(REPORTS_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      console.error('Failed to get local reports:', error);
+      const now = Date.now();
+      const active = normalized.filter(function(r) {
+        if (!r.created_at) return true;
+        return now - new Date(r.created_at).getTime() < 4 * 3600000;
+      });
+      const descs = await ReportService.getDescs();
+      return active.map(function(r) {
+        return { ...r, description: descs[r.id] || undefined };
+      });
+    } catch (err: any) {
+      if (err && err.offline) {
+        return await ReportService.getLocals();
+      }
+      console.error('getAreaReports error:', err);
       return [];
     }
   }
 
-  /**
-   * Queue report for sync when online
-   */
-  private static async queuePendingReport(report: Report): Promise<void> {
+  private static async saveDesc(id: string, d: string): Promise<void> {
     try {
-      const stored = await AsyncStorage.getItem(PENDING_REPORTS_KEY);
-      const pending: Report[] = stored ? JSON.parse(stored) : [];
-      
-      pending.push(report);
-      
-      await AsyncStorage.setItem(PENDING_REPORTS_KEY, JSON.stringify(pending));
-    } catch (error) {
-      console.error('Failed to queue pending report:', error);
-    }
+      const s = await AsyncStorage.getItem(DESC_KEY);
+      const m: Record<string, string> = s ? JSON.parse(s) : {};
+      m[id] = d;
+      const k = Object.keys(m);
+      if (k.length > 200) { delete m[k[0]]; }
+      await AsyncStorage.setItem(DESC_KEY, JSON.stringify(m));
+    } catch (e) { /* ignore */ }
   }
 
-  /**
-   * Sync pending reports when online
-   */
+  private static async getDescs(): Promise<Record<string, string>> {
+    try {
+      const s = await AsyncStorage.getItem(DESC_KEY);
+      return s ? JSON.parse(s) : {};
+    } catch (e) { return {}; }
+  }
+
+  private static async storeLoc(report: Report): Promise<void> {
+    try {
+      const s = await AsyncStorage.getItem(REPORTS_KEY);
+      const arr: Report[] = s ? JSON.parse(s) : [];
+      arr.unshift(report);
+      await AsyncStorage.setItem(REPORTS_KEY, JSON.stringify(arr.slice(0, 100)));
+    } catch (e) { /* ignore */ }
+  }
+
+  private static async getLocals(): Promise<Report[]> {
+    try {
+      const s = await AsyncStorage.getItem(REPORTS_KEY);
+      return s ? JSON.parse(s) : [];
+    } catch (e) { return []; }
+  }
+
+  private static async queuePend(report: Report): Promise<void> {
+    try {
+      const s = await AsyncStorage.getItem(PENDING_KEY);
+      const arr: Report[] = s ? JSON.parse(s) : [];
+      arr.push(report);
+      await AsyncStorage.setItem(PENDING_KEY, JSON.stringify(arr));
+    } catch (e) { /* ignore */ }
+  }
+
   static async syncPendingReports(): Promise<{ synced: number; failed: number }> {
     try {
-      const stored = await AsyncStorage.getItem(PENDING_REPORTS_KEY);
-      if (!stored) return { synced: 0, failed: 0 };
-      
-      const pending: Report[] = JSON.parse(stored);
-      if (pending.length === 0) return { synced: 0, failed: 0 };
-      
+      const s = await AsyncStorage.getItem(PENDING_KEY);
+      if (!s) { return { synced: 0, failed: 0 }; }
+      const pend: Report[] = JSON.parse(s);
+      if (!pend.length) { return { synced: 0, failed: 0 }; }
       let synced = 0;
       let failed = 0;
-      const remaining: Report[] = [];
-      
-      for (const report of pending) {
+      const rem: Report[] = [];
+      for (let i = 0; i < pend.length; i++) {
         try {
-          const payload = {
-            location: {
-              latitude: report.latitude,
-              longitude: report.longitude,
-              accuracy: 10,
-            },
-            severity: report.severity,
+          await api.post('/reports', {
+            location: { latitude: pend[i].latitude, longitude: pend[i].longitude, accuracy: 10 },
+            severity: pend[i].severity,
             reportType: 'waterlogged',
-          };
-          await api.post('/reports', payload);
+          });
           synced++;
-        } catch (error) {
-          failed++;
-          remaining.push(report);
-        }
+        } catch (e) { failed++; rem.push(pend[i]); }
       }
-      
-      // Update pending queue
-      await AsyncStorage.setItem(PENDING_REPORTS_KEY, JSON.stringify(remaining));
-      
+      await AsyncStorage.setItem(PENDING_KEY, JSON.stringify(rem));
       return { synced, failed };
-    } catch (error) {
-      console.error('Failed to sync pending reports:', error);
-      return { synced: 0, failed: 0 };
-    }
+    } catch (e) { return { synced: 0, failed: 0 }; }
   }
 
-  /**
-   * Get count of pending reports
-   */
   static async getPendingCount(): Promise<number> {
     try {
-      const stored = await AsyncStorage.getItem(PENDING_REPORTS_KEY);
-      if (!stored) return 0;
-      
-      const pending: Report[] = JSON.parse(stored);
-      return pending.length;
-    } catch (error) {
-      return 0;
-    }
-  }
-
-  /**
-   * Deduplicate reports by ID
-   */
-  private static deduplicateReports(reports: Report[]): Report[] {
-    const seen = new Set<string>();
-    return reports.filter(report => {
-      if (!report.id) return true;
-      if (seen.has(report.id)) return false;
-      seen.add(report.id);
-      return true;
-    });
+      const s = await AsyncStorage.getItem(PENDING_KEY);
+      if (!s) { return 0; }
+      return JSON.parse(s).length;
+    } catch (e) { return 0; }
   }
 }
+
