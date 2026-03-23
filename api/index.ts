@@ -55,7 +55,7 @@ app.get('/health', (_req, res) => {
 app.get('/', (_req, res) => {
   res.json({
     name: 'Waterlogging Alert Platform API',
-    version: '1.0.0-beta',
+    version: '1.0.1-beta',
     status: 'running',
   });
 });
