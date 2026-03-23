@@ -258,11 +258,17 @@ export const HomeScreen = ({ navigation }: any) => {
         </Animated.View>
       )}
 
-      {/* FAB */}
-      <TouchableOpacity style={st.fab} onPress={() => navigation.navigate('Report', { location })} activeOpacity={0.85}>
-        <Text style={st.fabPlus}>+</Text>
-        <Text style={st.fabText}>Report</Text>
-      </TouchableOpacity>
+      {/* Bottom action buttons */}
+      <View style={st.fabRow}>
+        <TouchableOpacity style={st.navBtn} onPress={() => navigation.navigate('Navigate')} activeOpacity={0.85}>
+          <Text style={{ fontSize: 16 }}>🧭</Text>
+          <Text style={st.navBtnText}>Navigate</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={st.fab} onPress={() => navigation.navigate('Report', { location })} activeOpacity={0.85}>
+          <Text style={st.fabPlus}>+</Text>
+          <Text style={st.fabText}>Report</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -310,7 +316,10 @@ const st = StyleSheet.create({
   cardDesc: { fontSize: 13, color: C.textSec, lineHeight: 18, marginBottom: 4 },
   cardCoords: { fontSize: 11, color: C.textMuted, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
 
-  fab: { position: 'absolute', bottom: 28, left: 16, right: 16, height: 52, borderRadius: 26, backgroundColor: C.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, elevation: 5, shadowColor: C.primary, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  fab: { flex: 1, height: 52, borderRadius: 26, backgroundColor: C.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, elevation: 5, shadowColor: C.primary, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8 },
   fabPlus: { fontSize: 20, color: '#fff', fontWeight: '300' },
   fabText: { fontSize: 15, color: '#fff', fontWeight: '700' },
+  fabRow: { position: 'absolute', bottom: 28, left: 16, right: 16, flexDirection: 'row', gap: 10 },
+  navBtn: { height: 52, borderRadius: 26, backgroundColor: C.card, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 20, elevation: 5, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6 },
+  navBtnText: { fontSize: 14, color: C.text, fontWeight: '700' },
 });

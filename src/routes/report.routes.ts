@@ -133,6 +133,145 @@ export function createReportRouter(pool: Pool): Router {
   });
 
   /**
+   * GET /api/v1/reports/navigate
+   * Public navigation endpoint — shortest path with waterlogging avoidance
+   * Used by the mobile app. No API key required (uses auth token).
+   * Query: origin=lat,lng  destination=lat,lng  profile=driving|walking|cycling
+   */
+  router.get('/navigate', async (req: Request, res: Response) => {
+    const originStr = req.query.origin as string;
+    const destStr = req.query.destination as string;
+    const profile = (['driving', 'walking', 'cycling'].includes(req.query.profile as string))
+      ? req.query.profile as string : 'driving';
+    const buffer = Math.min(parseFloat(req.query.buffer as string) || 300, 5000);
+
+    if (!originStr || !destStr) return res.status(400).json({ success: false, message: 'origin and destination required (lat,lng)' });
+
+    const [oLat, oLng] = originStr.split(',').map(Number);
+    const [dLat, dLng] = destStr.split(',').map(Number);
+    if ([oLat, oLng, dLat, dLng].some(isNaN)) return res.status(400).json({ success: false, message: 'Invalid coordinates' });
+
+    try {
+      const mapboxToken = process.env.MAPBOX_ACCESS_TOKEN || process.env.MAPBOX_SECRET_TOKEN;
+      if (!mapboxToken) return res.status(500).json({ success: false, message: 'Mapbox not configured' });
+
+      // Fetch all hazards in bounding box
+      const pad = 0.05;
+      const allHazards = await pool.query(
+        `SELECT id, ST_Y(location::geometry) as latitude, ST_X(location::geometry) as longitude, severity, created_at
+         FROM waterlogging_reports
+         WHERE is_active = true AND report_type = 'waterlogged' AND created_at > NOW() - INTERVAL '4 hours'
+           AND ST_Y(location::geometry) BETWEEN $1 AND $2 AND ST_X(location::geometry) BETWEEN $3 AND $4`,
+        [Math.min(oLat, dLat) - pad, Math.max(oLat, dLat) + pad, Math.min(oLng, dLng) - pad, Math.max(oLng, dLng) + pad]
+      );
+
+      // Shortest route via Mapbox Directions (Dijkstra)
+      const dirUrl = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${oLng},${oLat};${dLng},${dLat}?geometries=geojson&overview=full&steps=true&alternatives=true&access_token=${mapboxToken}`;
+      const dirRes = await fetch(dirUrl);
+      const dirData = await dirRes.json();
+
+      if (!dirData.routes || dirData.routes.length === 0) {
+        return res.status(404).json({ success: false, message: 'No route found' });
+      }
+
+      const shortestRoute = dirData.routes[0];
+      const coords: number[][] = shortestRoute.geometry.coordinates;
+
+      // Find hazards on shortest route
+      let shortestHazards: any[] = [];
+      if (coords.length >= 2) {
+        const lineWKT = 'LINESTRING(' + coords.map((c: number[]) => c[0] + ' ' + c[1]).join(',') + ')';
+        const hResult = await pool.query(
+          `SELECT id, ST_Y(location::geometry) as latitude, ST_X(location::geometry) as longitude,
+                  severity, created_at, ST_Distance(location, ST_GeomFromText($1, 4326)::geography) as distance_m
+           FROM waterlogging_reports
+           WHERE is_active = true AND report_type = 'waterlogged' AND created_at > NOW() - INTERVAL '4 hours'
+             AND ST_DWithin(location, ST_GeomFromText($1, 4326)::geography, $2)
+           ORDER BY severity DESC LIMIT 50`,
+          [lineWKT, buffer]
+        );
+        shortestHazards = hResult.rows;
+      }
+
+      // If hazards found, compute safe route with avoidance waypoint
+      let safeRoute = null;
+      let safeHazards: any[] = [];
+
+      if (shortestHazards.length > 0) {
+        const hazardCoords = shortestHazards.slice(0, 8).map((h: any) => ({
+          lat: parseFloat(h.latitude), lng: parseFloat(h.longitude),
+        }));
+        const midIdx = Math.floor(coords.length / 2);
+        const midPt = coords[midIdx];
+        const cLat = hazardCoords.reduce((s: number, h: any) => s + h.lat, 0) / hazardCoords.length;
+        const cLng = hazardCoords.reduce((s: number, h: any) => s + h.lng, 0) / hazardCoords.length;
+        const dx = midPt[0] - cLng;
+        const dy = midPt[1] - cLat;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
+        const offset = 0.005;
+        const avoidLng = midPt[0] + (dx / dist) * offset;
+        const avoidLat = midPt[1] + (dy / dist) * offset;
+
+        const safeUrl = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${oLng},${oLat};${avoidLng.toFixed(6)},${avoidLat.toFixed(6)};${dLng},${dLat}?geometries=geojson&overview=full&steps=true&access_token=${mapboxToken}`;
+        const safeRes = await fetch(safeUrl);
+        const safeData = await safeRes.json();
+
+        if (safeData.routes && safeData.routes.length > 0) {
+          safeRoute = safeData.routes[0];
+          const sc = safeRoute.geometry.coordinates;
+          if (sc.length >= 2) {
+            const sLineWKT = 'LINESTRING(' + sc.map((c: number[]) => c[0] + ' ' + c[1]).join(',') + ')';
+            const shResult = await pool.query(
+              `SELECT id, ST_Y(location::geometry) as latitude, ST_X(location::geometry) as longitude,
+                      severity, ST_Distance(location, ST_GeomFromText($1, 4326)::geography) as distance_m
+               FROM waterlogging_reports
+               WHERE is_active = true AND report_type = 'waterlogged' AND created_at > NOW() - INTERVAL '4 hours'
+                 AND ST_DWithin(location, ST_GeomFromText($1, 4326)::geography, $2)
+               ORDER BY severity DESC LIMIT 50`,
+              [sLineWKT, buffer]
+            );
+            safeHazards = shResult.rows;
+          }
+        }
+      }
+
+      const fmtSteps = (r: any) => (r.legs || []).flatMap((l: any) => (l.steps || []).map((s: any) => ({
+        instruction: s.maneuver?.instruction || '',
+        distance: Math.round(s.distance),
+        duration: Math.round(s.duration),
+        maneuver: { type: s.maneuver?.type, modifier: s.maneuver?.modifier },
+        startCoord: s.maneuver?.location,
+      })));
+
+      const fmtHazard = (rows: any[]) => rows.map((r: any) => ({
+        id: r.id, latitude: parseFloat(r.latitude), longitude: parseFloat(r.longitude),
+        severity: r.severity, distance_from_route_m: Math.round(parseFloat(r.distance_m || '0')),
+      }));
+
+      return res.json({
+        success: true,
+        shortest: {
+          distance: Math.round(shortestRoute.distance), duration: Math.round(shortestRoute.duration),
+          geometry: shortestRoute.geometry, steps: fmtSteps(shortestRoute),
+          hazards: { count: shortestHazards.length, reports: fmtHazard(shortestHazards) },
+        },
+        safe: safeRoute ? {
+          distance: Math.round(safeRoute.distance), duration: Math.round(safeRoute.duration),
+          geometry: safeRoute.geometry, steps: fmtSteps(safeRoute),
+          hazards: { count: safeHazards.length, reports: fmtHazard(safeHazards) },
+        } : null,
+        allHazards: allHazards.rows.map((r: any) => ({
+          id: r.id, latitude: parseFloat(r.latitude), longitude: parseFloat(r.longitude), severity: r.severity,
+        })),
+        meta: { algorithm: 'dijkstra-shortest-path-with-avoidance', profile },
+      });
+    } catch (error) {
+      console.error('Navigate error:', error);
+      return res.status(500).json({ success: false, message: 'Navigation failed' });
+    }
+  });
+
+  /**
    * GET /api/v1/reports/area
    * Get aggregated reports for a specific area
    * Query parameters: lat, lng, radius (optional, defaults to 500m)

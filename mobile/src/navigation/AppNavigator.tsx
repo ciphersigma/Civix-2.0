@@ -5,6 +5,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { ReportScreen } from '../screens/ReportScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { NavigationScreen } from '../screens/NavigationScreen';
 import { AuthService } from '../services/AuthService';
 
 const Stack = createStackNavigator();
@@ -37,6 +38,7 @@ export const AppNavigator = () => {
       <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Report" component={ReportScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Navigate" component={NavigationScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 };
