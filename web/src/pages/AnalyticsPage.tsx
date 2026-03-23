@@ -36,7 +36,6 @@ const AnalyticsPage: React.FC = () => {
   const total = stats?.totalReports || 0;
   const active = stats?.activeReports || 0;
   const users = stats?.totalUsers || 0;
-  const today = stats?.reportsToday || 0;
   const sev = stats?.severityBreakdown || { Low: 0, Medium: 0, High: 0 };
   const totalSev = sev.Low + sev.Medium + sev.High || 1;
   const expired = total - active;
