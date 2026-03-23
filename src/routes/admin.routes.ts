@@ -94,9 +94,9 @@ export function createAdminRouter(pool: Pool): Router {
         params.push(severity);
       }
       if (status === 'active') {
-        conditions.push(`is_active = true`);
+        conditions.push(`is_active = true AND created_at > NOW() - INTERVAL '4 hours'`);
       } else if (status === 'expired') {
-        conditions.push(`is_active = false`);
+        conditions.push(`(is_active = false OR created_at < NOW() - INTERVAL '4 hours')`);
       }
 
       if (conditions.length > 0) {
@@ -116,7 +116,10 @@ export function createAdminRouter(pool: Pool): Router {
       ]);
 
       return res.json({
-        reports: reportsResult.rows,
+        reports: reportsResult.rows.map((r: any) => ({
+          ...r,
+          is_active: r.is_active && (Date.now() - new Date(r.created_at).getTime() < 4 * 3600000),
+        })),
         total: parseInt(totalResult.rows[0].count),
         page,
         limit,

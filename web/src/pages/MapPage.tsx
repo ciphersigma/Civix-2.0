@@ -37,7 +37,7 @@ const MapPage: React.FC = () => {
 
   const fetchReports = async () => {
     try {
-      const res = await ApiService.getReports({ limit: 100 });
+      const res = await ApiService.getReports({ limit: 100, status: 'active' });
       const reps = res.data.reports || [];
       setReports(reps);
       renderCircles(reps);
