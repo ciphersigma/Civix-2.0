@@ -8,16 +8,29 @@ export function createAdminRouter(pool: Pool): Router {
   // GET /api/v1/admin/stats - Dashboard statistics
   router.get('/stats', async (_req: Request, res: Response) => {
     try {
-      const [usersResult, reportsResult, activeReportsResult, severityResult, todayResult] = await Promise.all([
+      const [
+        usersResult, reportsResult, activeReportsResult, severityResult, todayResult,
+        weatherAlerts, feedbackResult, apiKeysResult, votesResult, recentUsersResult,
+        notifStats, weeklyReports
+      ] = await Promise.all([
         pool.query('SELECT COUNT(*) as count FROM users'),
         pool.query('SELECT COUNT(*) as count FROM waterlogging_reports'),
         pool.query("SELECT COUNT(*) as count FROM waterlogging_reports WHERE is_active = true AND report_type = 'waterlogged' AND created_at > NOW() - INTERVAL '4 hours'"),
         pool.query("SELECT severity, COUNT(*) as count FROM waterlogging_reports WHERE is_active = true AND created_at > NOW() - INTERVAL '4 hours' GROUP BY severity"),
         pool.query("SELECT COUNT(*) as count FROM waterlogging_reports WHERE created_at >= CURRENT_DATE"),
+        pool.query("SELECT COUNT(*) as count FROM weather_alerts").catch(() => ({ rows: [{ count: 0 }] })),
+        pool.query("SELECT COUNT(*) as count FROM feedback").catch(() => ({ rows: [{ count: 0 }] })),
+        pool.query("SELECT COUNT(*) as count FROM api_keys WHERE is_active = true").catch(() => ({ rows: [{ count: 0 }] })),
+        pool.query("SELECT COALESCE(SUM(upvotes + downvotes), 0) as total FROM waterlogging_reports").catch(() => ({ rows: [{ total: 0 }] })),
+        pool.query("SELECT COUNT(*) as count FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'").catch(() => ({ rows: [{ count: 0 }] })),
+        pool.query("SELECT COUNT(*) as total, COUNT(responded_at) as responded FROM notifications WHERE type = 'rain_detection'").catch(() => ({ rows: [{ total: 0, responded: 0 }] })),
+        pool.query(`SELECT DATE(created_at) as date, COUNT(*) as count FROM waterlogging_reports WHERE created_at >= CURRENT_DATE - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY date`).catch(() => ({ rows: [] })),
       ]);
 
       const severityMap: Record<string, number> = { Low: 0, Medium: 0, High: 0 };
       severityResult.rows.forEach((r: any) => { severityMap[r.severity] = parseInt(r.count); });
+
+      const nStats = notifStats.rows[0] || { total: 0, responded: 0 };
 
       return res.json({
         totalUsers: parseInt(usersResult.rows[0].count),
@@ -25,6 +38,13 @@ export function createAdminRouter(pool: Pool): Router {
         activeReports: parseInt(activeReportsResult.rows[0].count),
         reportsToday: parseInt(todayResult.rows[0].count),
         severityBreakdown: severityMap,
+        weatherAlerts: parseInt(weatherAlerts.rows[0].count),
+        totalFeedback: parseInt(feedbackResult.rows[0].count),
+        activeApiKeys: parseInt(apiKeysResult.rows[0].count),
+        totalVotes: parseInt(votesResult.rows[0].total),
+        newUsersThisWeek: parseInt(recentUsersResult.rows[0].count),
+        notifications: { total: parseInt(nStats.total), responded: parseInt(nStats.responded) },
+        weeklyReports: weeklyReports.rows,
       });
     } catch (error) {
       console.error('Stats error:', error);
