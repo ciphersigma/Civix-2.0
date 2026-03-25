@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, StyleSheet, Alert, Text, TouchableOpacity, ActivityIndicator,
-  TextInput, Keyboard, StatusBar, Animated, FlatList,
+  TextInput, Keyboard, StatusBar, Animated, FlatList, ScrollView,
   PermissionsAndroid, Platform,
 } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
@@ -11,220 +11,166 @@ import { ReportService } from '../services/ReportService';
 import { AuthService } from '../services/AuthService';
 import { WeatherService } from '../services/WeatherService';
 import { api } from '../services/api';
+import { Theme as T } from '../components/ui';
+import { useTheme } from '../contexts/ThemeContext';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const MAPBOX_TOKEN =
   'pk.eyJ1IjoiYWxwaGFpbn' + 'N0aW54IiwiYSI6ImNta3A2N3M' + '2dDBldjEzZXFyeTJzeGRhdzMifQ.C7b81YKX5_cWuVFJNOMkoA';
 MapboxGL.setAccessToken(MAPBOX_TOKEN);
 
-const C = {
-  primary: '#6366F1',
-  primaryLight: '#818CF8',
-  bg: '#F8FAFC',
-  card: '#FFFFFF',
-  border: '#E2E8F0',
-  borderLight: '#F1F5F9',
-  text: '#1E293B',
-  textSec: '#64748B',
-  textMuted: '#94A3B8',
-  red: '#EF4444',
-  orange: '#F97316',
-  yellow: '#EAB308',
-  green: '#10B981',
-};
+const SEV = { High: T.red, Medium: T.yellow, Low: T.green } as Record<string, string>;
 
-const SEV_COLOR: Record<string, string> = { High: C.red, Medium: C.orange, Low: C.yellow };
+interface Geo { id: string; place_name: string; center: [number, number]; }
 
-interface GeoResult { id: string; place_name: string; center: [number, number]; }
-
-const requestLocationPermission = async (): Promise<boolean> => {
+const reqLoc = async () => {
   if (Platform.OS === 'android') {
-    const granted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      { title: 'Location Permission', message: 'This app needs location access to show nearby reports.', buttonPositive: 'Allow', buttonNegative: 'Deny' },
-    );
-    return granted === PermissionsAndroid.RESULTS.GRANTED;
+    const g = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+      { title: 'Location', message: 'Needed to show nearby reports.', buttonPositive: 'Allow', buttonNegative: 'Deny' });
+    return g === PermissionsAndroid.RESULTS.GRANTED;
   }
   return true;
 };
 
-const timeAgo = (d: string) => {
+const ago = (d: string) => {
   if (!d) return '';
   const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
   if (m < 1) return 'Just now';
   if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  return h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
+};
+
+const hasDist = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371000, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
 export const HomeScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
-  const [location, setLocation] = useState({ latitude: 23.0225, longitude: 72.5714 });
-  const [hasLocation, setHasLocation] = useState(false);
+  const { colors: c, isDark } = useTheme();
+  const [loc, setLoc] = useState({ latitude: 23.0225, longitude: 72.5714 });
+  const [hasLoc, setHasLoc] = useState(false);
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
-  const [selectedReport, setSelectedReport] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<GeoResult[]>([]);
+  const [sel, setSel] = useState<any>(null);
+  const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState<Geo[]>([]);
   const [searching, setSearching] = useState(false);
-  const [showResults, setShowResults] = useState(false);
+  const [showRes, setShowRes] = useState(false);
   const [weather, setWeather] = useState<any>(null);
-  const [weatherAlert, setWeatherAlert] = useState<{ title: string; body: string; data: any } | null>(null);
-  const searchTimer = useRef<any>(null);
-  const cameraRef = useRef<MapboxGL.Camera>(null);
-  const cardAnim = useRef(new Animated.Value(0)).current;
-  const statusBarH = Math.max(insets.top, Platform.OS === 'android' ? 40 : 0);
+  const [wAlert, setWAlert] = useState<any>(null);
+  const timer = useRef<any>(null);
+  const cam = useRef<MapboxGL.Camera>(null);
+  const anim = useRef(new Animated.Value(0)).current;
+  const top = Math.max(insets.top, Platform.OS === 'android' ? 40 : 0);
 
   useEffect(() => { init(); }, []);
-
-  // Listen for foreground push notifications
   useEffect(() => {
-    const unsubscribe = WeatherService.setupForegroundHandler((title, body, data) => {
-      setWeatherAlert({ title, body, data });
-      // Auto-dismiss after 8 seconds
-      setTimeout(() => setWeatherAlert(null), 8000);
+    const unsub = WeatherService.setupForegroundHandler((title, body, data) => {
+      setWAlert({ title, body, data }); setTimeout(() => setWAlert(null), 8000);
     });
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
-
+  useEffect(() => { Animated.spring(anim, { toValue: sel ? 1 : 0, useNativeDriver: true, tension: 50, friction: 9 }).start(); }, [sel]);
   useEffect(() => {
-    Animated.spring(cardAnim, { toValue: selectedReport ? 1 : 0, useNativeDriver: true, tension: 50, friction: 9 }).start();
-  }, [selectedReport]);
-
-  useEffect(() => {
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    if (!searchQuery.trim() || searchQuery.length < 3) { setSearchResults([]); setShowResults(false); return; }
-    searchTimer.current = setTimeout(() => geocodeSearch(searchQuery.trim()), 400);
-    return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
-  }, [searchQuery]);
+    if (timer.current) clearTimeout(timer.current);
+    if (!q.trim() || q.length < 3) { setResults([]); setShowRes(false); return; }
+    timer.current = setTimeout(() => geocode(q.trim()), 400);
+    return () => { if (timer.current) clearTimeout(timer.current); };
+  }, [q]);
 
   const init = async () => {
-    const offline = await AuthService.isOfflineMode();
-    setIsOffline(offline);
+    const off = await AuthService.isOfflineMode(); setIsOffline(off);
     setPendingCount(await ReportService.getPendingCount());
-    const ok = await requestLocationPermission();
-    ok ? getCurrentLocation() : loadReports();
-
-    // Register for push notifications and update location for weather alerts
-    if (!offline) {
+    (await reqLoc()) ? getLoc() : loadReps();
+    if (!off) {
       WeatherService.registerForPushNotifications().catch(() => {});
       WeatherService.updateLocation().catch(() => {});
       WeatherService.getCurrentWeather().then(w => { if (w) setWeather(w); }).catch(() => {});
     }
   };
-
-  const getCurrentLocation = () => {
+  const getLoc = () => {
     Geolocation.getCurrentPosition(
-      pos => {
-        const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-        setLocation(coords); setHasLocation(true);
-        cameraRef.current?.setCamera({ centerCoordinate: [coords.longitude, coords.latitude], zoomLevel: 14, animationDuration: 600 });
-        loadReports(coords.latitude, coords.longitude);
-      },
-      () => loadReports(),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
-    );
+      p => { const c = { latitude: p.coords.latitude, longitude: p.coords.longitude }; setLoc(c); setHasLoc(true); cam.current?.setCamera({ centerCoordinate: [c.longitude, c.latitude], zoomLevel: 14, animationDuration: 600 }); loadReps(c.latitude, c.longitude); },
+      () => loadReps(), { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 });
   };
-
-  const goToMyLocation = useCallback(async () => {
-    const ok = await requestLocationPermission();
-    if (!ok) { Alert.alert('Permission Denied', 'Enable location in settings.'); return; }
+  const recenter = useCallback(async () => {
+    if (!(await reqLoc())) { Alert.alert('Permission Denied'); return; }
     Geolocation.getCurrentPosition(
-      pos => {
-        const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-        setLocation(coords); setHasLocation(true);
-        cameraRef.current?.setCamera({ centerCoordinate: [coords.longitude, coords.latitude], zoomLevel: 15, animationDuration: 800 });
-      },
-      () => Alert.alert('Error', 'Could not get location.'),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
-    );
+      p => { const c = { latitude: p.coords.latitude, longitude: p.coords.longitude }; setLoc(c); setHasLoc(true); cam.current?.setCamera({ centerCoordinate: [c.longitude, c.latitude], zoomLevel: 15, animationDuration: 800 }); },
+      () => Alert.alert('Error', 'Could not get location.'), { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 });
   }, []);
-
-  const loadReports = async (lat?: number, lng?: number) => {
+  const loadReps = async (la?: number, ln?: number) => {
     setLoading(true);
-    try {
-      setReports(await ReportService.getAreaReports(lat || location.latitude, lng || location.longitude));
-    } catch (e) { console.error('Load reports failed:', e); }
+    try { setReports(await ReportService.getAreaReports(la || loc.latitude, ln || loc.longitude)); } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
-
-  const geocodeSearch = async (query: string) => {
+  const geocode = async (s: string) => {
     setSearching(true);
     try {
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=5&proximity=${location.longitude},${location.latitude}&types=place,locality,neighborhood,address,poi`;
-      const data = await (await fetch(url)).json();
-      if (data.features) {
-        setSearchResults(data.features.map((f: any) => ({ id: f.id, place_name: f.place_name, center: f.center })));
-        setShowResults(true);
-      }
+      const d = await (await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(s)}.json?access_token=${MAPBOX_TOKEN}&limit=5&proximity=${loc.longitude},${loc.latitude}&types=place,locality,neighborhood,address,poi`)).json();
+      if (d.features) { setResults(d.features.map((f: any) => ({ id: f.id, place_name: f.place_name, center: f.center }))); setShowRes(true); }
     } catch {} finally { setSearching(false); }
   };
-
-  const selectPlace = (r: GeoResult) => {
-    Keyboard.dismiss(); setSearchQuery(r.place_name.split(',')[0]); setShowResults(false); setSearchResults([]);
-    cameraRef.current?.setCamera({ centerCoordinate: r.center, zoomLevel: 14, animationDuration: 1000 });
+  const pick = (r: Geo) => { Keyboard.dismiss(); setQ(r.place_name.split(',')[0]); setShowRes(false); setResults([]); cam.current?.setCamera({ centerCoordinate: r.center, zoomLevel: 14, animationDuration: 1000 }); };
+  const sync = async () => {
+    if (!pendingCount) return;
+    try { const r = await ReportService.syncPendingReports(); if (r.synced > 0) { Alert.alert('Synced', `${r.synced} report(s)`); setPendingCount(r.failed); loadReps(); } } catch { Alert.alert('Error', 'Sync failed'); }
   };
 
-  const handleSync = async () => {
-    if (pendingCount === 0) return;
-    try {
-      const res = await ReportService.syncPendingReports();
-      if (res.synced > 0) { Alert.alert('Synced', `${res.synced} report(s) uploaded`); setPendingCount(res.failed); loadReports(); }
-    } catch { Alert.alert('Error', 'Sync failed'); }
-  };
-
-  const highCount = reports.filter(r => r.severity === 'High').length;
-  const medCount = reports.filter(r => r.severity === 'Medium').length;
-  const lowCount = reports.filter(r => r.severity === 'Low').length;
-  const cardTranslateY = cardAnim.interpolate({ inputRange: [0, 1], outputRange: [200, 0] });
+  const hi = reports.filter(r => r.severity === 'High').length;
+  const md = reports.filter(r => r.severity === 'Medium').length;
+  const lo = reports.filter(r => r.severity === 'Low').length;
+  const cardY = anim.interpolate({ inputRange: [0, 1], outputRange: [300, 0] });
 
   return (
-    <View style={st.container}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+    <View style={st.root}>
+      <StatusBar translucent backgroundColor="transparent" barStyle={c.statusBar} />
 
-      <MapboxGL.MapView style={StyleSheet.absoluteFillObject} styleURL="mapbox://styles/mapbox/streets-v12" scaleBarEnabled={false}
-        onPress={() => { setSelectedReport(null); setShowResults(false); Keyboard.dismiss(); }}>
-        <MapboxGL.Camera ref={cameraRef} centerCoordinate={[location.longitude, location.latitude]} zoomLevel={13} />
-        {hasLocation && (
-          <MapboxGL.PointAnnotation id="user-loc" coordinate={[location.longitude, location.latitude]}>
-            <View style={st.blueDotOuter}><View style={st.blueDotInner} /></View>
+      {/* ── Map ── */}
+      <MapboxGL.MapView style={StyleSheet.absoluteFillObject} styleURL={c.mapStyle} scaleBarEnabled={false}
+        onPress={() => { setSel(null); setShowRes(false); Keyboard.dismiss(); }}>
+        <MapboxGL.Camera ref={cam} centerCoordinate={[loc.longitude, loc.latitude]} zoomLevel={13} />
+        {hasLoc && (
+          <MapboxGL.PointAnnotation id="me" coordinate={[loc.longitude, loc.latitude]}>
+            <View style={st.dot}><View style={st.dotIn} /></View>
           </MapboxGL.PointAnnotation>
         )}
-        {reports.filter((r: any) => r.latitude != null && r.longitude != null && !isNaN(Number(r.latitude)) && !isNaN(Number(r.longitude))).map((r: any) => {
-          const color = SEV_COLOR[r.severity] || C.yellow;
-          return (
-            <MapboxGL.PointAnnotation key={r.id} id={`r-${r.id}`} coordinate={[Number(r.longitude), Number(r.latitude)]} onSelected={() => setSelectedReport(r)}>
-              <View style={[st.pin, { backgroundColor: color }]}><Text style={st.pinText}>💧</Text></View>
-            </MapboxGL.PointAnnotation>
-          );
-        })}
+        {reports.filter(r => r.latitude != null && r.longitude != null && !isNaN(Number(r.latitude)) && !isNaN(Number(r.longitude))).map(r => (
+          <MapboxGL.PointAnnotation key={r.id} id={`r-${r.id}`} coordinate={[Number(r.longitude), Number(r.latitude)]} onSelected={() => setSel(r)}>
+            <View style={[st.pin, { backgroundColor: SEV[r.severity] || T.yellow }]}><Text style={{ fontSize: 12 }}>💧</Text></View>
+          </MapboxGL.PointAnnotation>
+        ))}
       </MapboxGL.MapView>
 
-      {/* Search */}
-      <View style={[st.searchWrap, { top: statusBarH + 10 }]}>
-        <View style={st.searchBox}>
-          <Text style={st.searchIcon}>🔍</Text>
-          <TextInput style={st.searchInput} placeholder="Search a place..." placeholderTextColor={C.textMuted}
-            value={searchQuery} onChangeText={t => { setSearchQuery(t); if (!t.trim()) setShowResults(false); }}
-            onFocus={() => { if (searchResults.length) setShowResults(true); }} returnKeyType="search" />
-          {searching && <ActivityIndicator size="small" color={C.primary} style={{ marginRight: 4 }} />}
-          {searchQuery.length > 0 && !searching && (
-            <TouchableOpacity onPress={() => { setSearchQuery(''); setSearchResults([]); setShowResults(false); }}>
-              <Text style={st.clearBtn}>✕</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={st.profileBtn}>
+      {/* ── Search bar + profile ── */}
+      <View style={[st.searchArea, { top: top + 10 }]}>
+        <View style={st.searchRow}>
+          <View style={[st.searchBox, { backgroundColor: c.card }]}>
+            <Text style={{ fontSize: 14, opacity: 0.35, marginRight: 8 }}>🔍</Text>
+            <TextInput style={[st.searchIn, { color: c.text }]} placeholder="Search location..." placeholderTextColor={c.textMuted}
+              value={q} onChangeText={t => { setQ(t); if (!t.trim()) setShowRes(false); }}
+              onFocus={() => { if (results.length) setShowRes(true); }} returnKeyType="search" />
+            {searching && <ActivityIndicator size="small" color={T.primary} />}
+            {q.length > 0 && !searching && (
+              <TouchableOpacity onPress={() => { setQ(''); setResults([]); setShowRes(false); }}><Text style={{ color: T.textMuted, fontSize: 15, paddingHorizontal: 4 }}>✕</Text></TouchableOpacity>
+            )}
+          </View>
+          <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={[st.profileBtn, { backgroundColor: c.card }]}>
             <Text style={{ fontSize: 16 }}>👤</Text>
           </TouchableOpacity>
         </View>
-        {showResults && searchResults.length > 0 && (
-          <View style={st.dropdown}>
-            <FlatList data={searchResults} keyExtractor={i => i.id} keyboardShouldPersistTaps="handled"
+        {showRes && results.length > 0 && (
+          <View style={[st.dropdown, { backgroundColor: c.card }]}>
+            <FlatList data={results} keyExtractor={i => i.id} keyboardShouldPersistTaps="handled"
               renderItem={({ item }) => (
-                <TouchableOpacity style={st.dropItem} onPress={() => selectPlace(item)} activeOpacity={0.6}>
-                  <Text style={{ fontSize: 14, marginRight: 10, opacity: 0.5 }}>📍</Text>
+                <TouchableOpacity style={st.dropItem} onPress={() => pick(item)} activeOpacity={0.6}>
+                  <Text style={{ fontSize: 13, opacity: 0.4, marginRight: 10 }}>📍</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={st.dropName} numberOfLines={1}>{item.place_name.split(',')[0]}</Text>
                     <Text style={st.dropAddr} numberOfLines={1}>{item.place_name.split(',').slice(1).join(',').trim()}</Text>
@@ -235,193 +181,207 @@ export const HomeScreen = ({ navigation }: any) => {
         )}
       </View>
 
-      {isOffline && (
-        <View style={[st.offlineBanner, { top: statusBarH + 68 }]}>
-          <Text style={st.offlineLabel}>📡 Offline</Text>
-          {pendingCount > 0 && (
-            <TouchableOpacity onPress={handleSync} style={st.syncBtn}><Text style={st.syncLabel}>Sync {pendingCount}</Text></TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      {/* Weather alert notification banner */}
-      {weatherAlert && (
-        <View style={[st.weatherAlertBanner, { top: statusBarH + 68 }]}>
-          <Text style={{ fontSize: 16, marginRight: 8 }}>🌧️</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={st.weatherAlertTitle}>{weatherAlert.title}</Text>
-            <Text style={st.weatherAlertBody} numberOfLines={2}>{weatherAlert.body}</Text>
-          </View>
-          <TouchableOpacity onPress={() => setWeatherAlert(null)} style={{ padding: 4 }}>
-            <Text style={{ fontSize: 14, color: '#1E40AF' }}>✕</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Weather chip */}
-      {weather && !weatherAlert && (
-        <TouchableOpacity
-          style={[st.weatherChip, { top: statusBarH + 68 }, weather.isRaining && st.weatherChipRain]}
-          activeOpacity={0.8}
-          onPress={() => {
-            Alert.alert(
-              weather.isRaining ? '🌧️ Raining' : '☀️ Clear',
-              `Temperature: ${weather.temperature}°C\nHumidity: ${weather.humidity}%\nWind: ${weather.windSpeed} km/h\nPrecipitation: ${weather.precipitation} mm`,
-            );
-          }}>
-          <Text style={{ fontSize: 14 }}>{weather.isRaining ? '🌧️' : '☀️'}</Text>
-          <Text style={[st.weatherChipText, weather.isRaining && { color: '#1E40AF' }]}>
-            {weather.temperature ? `${Math.round(weather.temperature)}°` : '--'}
-          </Text>
+      {/* ── Weather chip ── */}
+      {weather && !wAlert && (
+        <TouchableOpacity style={[st.weatherChip, { top: top + 66, backgroundColor: c.card }]} activeOpacity={0.8}
+          onPress={() => Alert.alert(weather.isRaining ? '🌧️ Raining' : '☀️ Clear', `${weather.temperature}°C · ${weather.humidity}% humidity · ${weather.precipitation}mm rain`)}>
+          <Text style={{ fontSize: 14 }}>{weather.isRaining ? '🌧' : '☀'}</Text>
+          <Text style={[st.weatherTxt, { color: c.text }]}>{weather.temperature ? `${Math.round(weather.temperature)}°C` : '--'}</Text>
+          <Text style={[st.weatherLabel, { color: c.textMuted }]}>{weather.isRaining ? 'Heavy Rain' : 'Clear'}</Text>
         </TouchableOpacity>
       )}
 
-      {/* Side buttons */}
-      <View style={st.sideButtons}>
-        <TouchableOpacity style={st.circleBtn} onPress={goToMyLocation} activeOpacity={0.7}><Text style={st.circleBtnIcon}>◎</Text></TouchableOpacity>
-        <TouchableOpacity style={st.circleBtn} onPress={() => loadReports()} activeOpacity={0.7}><Text style={st.circleBtnIcon}>↻</Text></TouchableOpacity>
+      {/* ── Weather alert banner ── */}
+      {wAlert && (
+        <View style={[st.alertBanner, { top: top + 66 }]}>
+          <Text style={{ fontSize: 16, marginRight: 8 }}>🌧️</Text>
+          <View style={{ flex: 1 }}><Text style={{ fontSize: 13, fontWeight: '700', color: '#1E3A8A' }}>{wAlert.title}</Text><Text style={{ fontSize: 12, color: '#1E40AF' }} numberOfLines={1}>{wAlert.body}</Text></View>
+          <TouchableOpacity onPress={() => setWAlert(null)}><Text style={{ color: '#1E40AF', fontSize: 14 }}>✕</Text></TouchableOpacity>
+        </View>
+      )}
+
+      {/* ── Right controls ── */}
+      <View style={st.rightCtrls}>
+        <TouchableOpacity style={[st.ctrlBtn, { backgroundColor: c.card }]} onPress={recenter} activeOpacity={0.7}><Icon name="crosshairs-gps" size={20} color={c.textSec} /></TouchableOpacity>
+        <TouchableOpacity style={[st.ctrlBtn, { backgroundColor: c.card }]} onPress={() => loadReps()} activeOpacity={0.7}><Icon name="refresh" size={20} color={c.textSec} /></TouchableOpacity>
       </View>
 
-      {/* Bottom info */}
-      <View style={st.infoBar}>
-        <View style={st.infoChip}><View style={[st.infoDot, { backgroundColor: C.red }]} /><Text style={st.infoCount}>{highCount}</Text></View>
-        <View style={st.infoChip}><View style={[st.infoDot, { backgroundColor: C.orange }]} /><Text style={st.infoCount}>{medCount}</Text></View>
-        <View style={st.infoChip}><View style={[st.infoDot, { backgroundColor: C.yellow }]} /><Text style={st.infoCount}>{lowCount}</Text></View>
-        <Text style={st.infoTotal}>{reports.length} reports nearby</Text>
-        {loading && <ActivityIndicator size="small" color={C.primary} />}
+      {/* ── FAB (center) ── */}
+      <View style={st.fabWrap}>
+        <TouchableOpacity style={st.fab} onPress={() => navigation.navigate('Report', { location: loc })} activeOpacity={0.85}>
+          <Text style={st.fabIcon}>+</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Selected report card */}
-      {selectedReport && (
-        <Animated.View style={[st.card, { transform: [{ translateY: cardTranslateY }] }]}>
-          <View style={st.cardRow}>
-            <View style={[st.cardBadge, { backgroundColor: (SEV_COLOR[selectedReport.severity] || C.yellow) + '18', borderColor: (SEV_COLOR[selectedReport.severity] || C.yellow) + '40' }]}>
-              <Text style={[st.cardBadgeText, { color: SEV_COLOR[selectedReport.severity] || C.yellow }]}>{selectedReport.severity}</Text>
-            </View>
-            <Text style={st.cardDate}>{timeAgo(selectedReport.created_at || selectedReport.createdAt)}</Text>
-            <TouchableOpacity onPress={() => setSelectedReport(null)} style={{ padding: 4 }}><Text style={{ fontSize: 16, color: C.textMuted }}>✕</Text></TouchableOpacity>
+      {/* ── Bottom sheet ── */}
+      <View style={[st.sheet, { paddingBottom: Math.max(insets.bottom, 20), backgroundColor: c.card, maxHeight: sheetExpanded ? '70%' : undefined }]}>
+        <View style={[st.handle, { backgroundColor: c.border }]} />
+
+        {/* Top row: severity counts */}
+        <View style={st.sheetCountsRow}>
+          <View style={[st.sheetChip, { backgroundColor: T.red + '15' }]}>
+            <View style={[st.sheetDot, { backgroundColor: T.red }]} />
+            <Text style={[st.sheetChipVal, { color: c.text }]}>{hi}</Text>
           </View>
-          {selectedReport.report_type && <Text style={st.cardType}>{selectedReport.report_type}</Text>}
-          {selectedReport.description ? (
-            <Text style={st.cardDesc} numberOfLines={3}>{selectedReport.description}</Text>
-          ) : (
-            <Text style={[st.cardDesc, { fontStyle: 'italic', color: C.textMuted }]}>No description available</Text>
-          )}
-          <Text style={st.cardCoords}>{Number(selectedReport.latitude).toFixed(4)}, {Number(selectedReport.longitude).toFixed(4)}</Text>
-          {/* Community verification */}
+          <View style={[st.sheetChip, { backgroundColor: T.yellow + '15' }]}>
+            <View style={[st.sheetDot, { backgroundColor: T.yellow }]} />
+            <Text style={[st.sheetChipVal, { color: c.text }]}>{md}</Text>
+          </View>
+          <View style={[st.sheetChip, { backgroundColor: T.green + '15' }]}>
+            <View style={[st.sheetDot, { backgroundColor: T.green }]} />
+            <Text style={[st.sheetChipVal, { color: c.text }]}>{lo}</Text>
+          </View>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity onPress={() => setSheetExpanded(!sheetExpanded)} activeOpacity={0.6} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Text style={st.sheetViewLink}>{sheetExpanded ? 'Hide' : 'View'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Middle: report count + pending */}
+        <Text style={[st.sheetTitle, { color: c.text }]}>{reports.length} reports nearby</Text>
+        {pendingCount > 0 && (
+          <TouchableOpacity onPress={sync} style={st.sheetPending}>
+            <Icon name="wifi-off" size={14} color={c.textMuted} />
+            <Text style={[st.sheetPendingTxt, { color: c.textMuted }]}>{pendingCount} pending reports (offline)</Text>
+          </TouchableOpacity>
+        )}
+        {loading && <ActivityIndicator size="small" color={T.primary} style={{ marginTop: 8 }} />}
+
+        {/* Bottom: Navigate button */}
+        <TouchableOpacity style={[st.sheetNavBtn, { backgroundColor: c.cardAlt }]} onPress={() => navigation.navigate('Navigate')} activeOpacity={0.8}>
+          <Icon name="navigation-variant-outline" size={18} color={c.text} />
+          <Text style={[st.sheetNavTxt, { color: c.text }]}>Navigate</Text>
+        </TouchableOpacity>
+
+        {/* Expanded report list */}
+        {sheetExpanded && reports.length > 0 && (
+          <ScrollView style={st.reportList} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+            {reports.filter(r => r.latitude != null && r.longitude != null).map((r: any) => {
+              const sevColor = SEV[r.severity] || T.yellow;
+              const dist = loc ? hasDist(loc.latitude, loc.longitude, Number(r.latitude), Number(r.longitude)) : null;
+              return (
+                <View key={r.id} style={[st.reportItem, { backgroundColor: c.cardAlt }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <View style={[st.badge, { backgroundColor: sevColor + '18' }]}>
+                      <View style={[st.badgeDot, { backgroundColor: sevColor }]} />
+                      <Text style={[st.badgeTxt, { color: sevColor }]}>{r.severity}</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, color: c.textMuted }}>{ago(r.created_at)}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+                    {dist !== null && <Text style={{ fontSize: 12, color: c.textSec }}>{dist < 1000 ? Math.round(dist) + 'm away' : (dist / 1000).toFixed(1) + 'km away'}</Text>}
+                    {r.report_type && <Text style={{ fontSize: 12, color: c.textMuted, textTransform: 'capitalize' }}>{r.report_type}</Text>}
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <TouchableOpacity style={[st.voteBtn, { backgroundColor: '#F0FDF4' }]}
+                      onPress={async () => { try { await api.post(`/reports/${r.id}/vote`, { vote: 1 }); loadReps(); } catch {} }}>
+                      <Text style={{ fontSize: 11 }}>👍</Text><Text style={{ fontSize: 11, fontWeight: '700', color: T.green }}>{r.upvotes || 0}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[st.voteBtn, { backgroundColor: '#FEF2F2' }]}
+                      onPress={async () => { try { await api.post(`/reports/${r.id}/vote`, { vote: -1 }); loadReps(); } catch {} }}>
+                      <Text style={{ fontSize: 11 }}>👎</Text><Text style={{ fontSize: 11, fontWeight: '700', color: T.red }}>{r.downvotes || 0}</Text>
+                    </TouchableOpacity>
+                    {(r.upvotes > 0 || r.downvotes > 0) && (
+                      <Text style={{ flex: 1, textAlign: 'right', fontSize: 11, color: c.textMuted }}>{Math.round((r.trust_score || 0.5) * 100)}%</Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          </ScrollView>
+        )}
+      </View>
+
+      {/* ── Selected report card ── */}
+      {sel && (
+        <Animated.View style={[st.selCard, { transform: [{ translateY: cardY }], backgroundColor: c.card }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <View style={[st.badge, { backgroundColor: (SEV[sel.severity] || T.yellow) + '18' }]}>
+              <View style={[st.badgeDot, { backgroundColor: SEV[sel.severity] || T.yellow }]} />
+              <Text style={[st.badgeTxt, { color: SEV[sel.severity] || T.yellow }]}>{sel.severity}</Text>
+            </View>
+            <Text style={{ fontSize: 12, color: c.textMuted }}>{ago(sel.created_at)}</Text>
+            <TouchableOpacity onPress={() => setSel(null)}><Text style={{ fontSize: 16, color: c.textMuted }}>✕</Text></TouchableOpacity>
+          </View>
+          {sel.report_type && <Text style={{ fontSize: 12, color: c.textMuted, textTransform: 'capitalize', marginBottom: 4 }}>{sel.report_type}</Text>}
+          <Text style={{ fontSize: 11, color: c.textMuted, fontFamily: 'monospace' }}>{Number(sel.latitude).toFixed(4)}, {Number(sel.longitude).toFixed(4)}</Text>
           <View style={st.voteRow}>
-            <TouchableOpacity
-              style={[st.voteBtn, st.voteBtnUp]}
-              onPress={async () => {
-                try {
-                  const res = await api.post(`/reports/${selectedReport.id}/vote`, { vote: 1 });
-                  setSelectedReport({ ...selectedReport, upvotes: res.data.upvotes, downvotes: res.data.downvotes, trust_score: res.data.trustScore });
-                } catch { Alert.alert('Error', 'Could not vote'); }
-              }}
-              activeOpacity={0.7}>
-              <Text style={{ fontSize: 13 }}>👍</Text>
-              <Text style={st.voteCount}>{selectedReport.upvotes || 0}</Text>
+            <TouchableOpacity style={[st.voteBtn, { backgroundColor: '#F0FDF4' }]}
+              onPress={async () => { try { const r = await api.post(`/reports/${sel.id}/vote`, { vote: 1 }); setSel({ ...sel, upvotes: r.data.upvotes, downvotes: r.data.downvotes, trust_score: r.data.trustScore }); } catch { Alert.alert('Error', 'Could not vote'); } }}>
+              <Text style={{ fontSize: 12 }}>👍</Text><Text style={{ fontSize: 12, fontWeight: '700', color: T.green }}>{sel.upvotes || 0}</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[st.voteBtn, st.voteBtnDown]}
-              onPress={async () => {
-                try {
-                  const res = await api.post(`/reports/${selectedReport.id}/vote`, { vote: -1 });
-                  setSelectedReport({ ...selectedReport, upvotes: res.data.upvotes, downvotes: res.data.downvotes, trust_score: res.data.trustScore });
-                } catch { Alert.alert('Error', 'Could not vote'); }
-              }}
-              activeOpacity={0.7}>
-              <Text style={{ fontSize: 13 }}>👎</Text>
-              <Text style={st.voteCountDown}>{selectedReport.downvotes || 0}</Text>
+            <TouchableOpacity style={[st.voteBtn, { backgroundColor: '#FEF2F2' }]}
+              onPress={async () => { try { const r = await api.post(`/reports/${sel.id}/vote`, { vote: -1 }); setSel({ ...sel, upvotes: r.data.upvotes, downvotes: r.data.downvotes, trust_score: r.data.trustScore }); } catch { Alert.alert('Error', 'Could not vote'); } }}>
+              <Text style={{ fontSize: 12 }}>👎</Text><Text style={{ fontSize: 12, fontWeight: '700', color: T.red }}>{sel.downvotes || 0}</Text>
             </TouchableOpacity>
-            {(selectedReport.upvotes > 0 || selectedReport.downvotes > 0) && (
-              <Text style={st.trustLabel}>
-                {Math.round((selectedReport.trust_score || 0.5) * 100)}% trust
-              </Text>
-            )}
+            {(sel.upvotes > 0 || sel.downvotes > 0) && <Text style={{ flex: 1, textAlign: 'right', fontSize: 11, color: c.textMuted }}>{Math.round((sel.trust_score || 0.5) * 100)}% trust</Text>}
           </View>
         </Animated.View>
       )}
-
-      {/* Bottom action buttons */}
-      <View style={st.fabRow}>
-        <TouchableOpacity style={st.navBtn} onPress={() => navigation.navigate('Navigate')} activeOpacity={0.85}>
-          <Text style={{ fontSize: 16 }}>🧭</Text>
-          <Text style={st.navBtnText}>Navigate</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={st.fab} onPress={() => navigation.navigate('Report', { location })} activeOpacity={0.85}>
-          <Text style={st.fabPlus}>+</Text>
-          <Text style={st.fabText}>Report</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };
 
 const st = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
-  blueDotOuter: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(99,102,241,0.25)', alignItems: 'center', justifyContent: 'center' },
-  blueDotInner: { width: 14, height: 14, borderRadius: 7, backgroundColor: C.primary, borderWidth: 2.5, borderColor: '#fff', elevation: 3 },
-  pin: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
-  pinText: { fontSize: 13 },
+  root: { flex: 1, backgroundColor: T.bg },
 
-  searchWrap: { position: 'absolute', left: 14, right: 14, zIndex: 100 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 28, paddingHorizontal: 14, height: 50, elevation: 4, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 },
-  searchIcon: { fontSize: 15, marginRight: 8, opacity: 0.4 },
-  searchInput: { flex: 1, fontSize: 15, color: C.text, paddingVertical: 0 },
-  clearBtn: { fontSize: 15, color: C.textMuted, paddingHorizontal: 6, paddingVertical: 4 },
-  profileBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
+  // User dot
+  dot: { width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(99,102,241,0.2)', alignItems: 'center', justifyContent: 'center' },
+  dotIn: { width: 12, height: 12, borderRadius: 6, backgroundColor: T.primary, borderWidth: 2.5, borderColor: '#fff', elevation: 3 },
+  pin: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff', elevation: 4 },
 
-  dropdown: { backgroundColor: C.card, borderRadius: 16, marginTop: 6, maxHeight: 180, elevation: 5, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
-  dropItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.borderLight },
-  dropName: { fontSize: 14, fontWeight: '600', color: C.text },
-  dropAddr: { fontSize: 11, color: C.textMuted, marginTop: 1 },
-
-  offlineBanner: { position: 'absolute', left: 16, right: 16, backgroundColor: '#FEF9C3', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', elevation: 3, borderWidth: 1, borderColor: '#FDE68A' },
-  offlineLabel: { flex: 1, color: '#92400E', fontWeight: '600', fontSize: 13 },
-  syncBtn: { backgroundColor: C.yellow, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14 },
-  syncLabel: { color: '#fff', fontSize: 11, fontWeight: '700' },
-
-  sideButtons: { position: 'absolute', right: 14, bottom: 160, gap: 10 },
-  circleBtn: { width: 46, height: 46, borderRadius: 23, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center', elevation: 3, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4 },
-  circleBtnIcon: { fontSize: 22, color: C.textSec },
-
-  infoBar: { position: 'absolute', bottom: 90, left: 14, right: 14, backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 14, elevation: 3, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 6 },
-  infoChip: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  infoDot: { width: 10, height: 10, borderRadius: 5 },
-  infoCount: { fontSize: 14, fontWeight: '700', color: C.text },
-  infoTotal: { flex: 1, textAlign: 'right', fontSize: 12, color: C.textMuted },
-
-  card: { position: 'absolute', bottom: 160, left: 14, right: 70, backgroundColor: C.card, borderRadius: 14, padding: 14, elevation: 5, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8 },
-  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  cardBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, borderWidth: 1 },
-  cardBadgeText: { fontSize: 11, fontWeight: '700' },
-  cardDate: { flex: 1, fontSize: 11, color: C.textMuted },
-  cardType: { fontSize: 11, color: C.textMuted, marginBottom: 4, textTransform: 'capitalize' },
-  cardDesc: { fontSize: 13, color: C.textSec, lineHeight: 18, marginBottom: 4 },
-  cardCoords: { fontSize: 11, color: C.textMuted, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-
-  fab: { flex: 1, height: 52, borderRadius: 26, backgroundColor: C.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, elevation: 5, shadowColor: C.primary, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8 },
-  fabPlus: { fontSize: 20, color: '#fff', fontWeight: '300' },
-  fabText: { fontSize: 15, color: '#fff', fontWeight: '700' },
-  fabRow: { position: 'absolute', bottom: 28, left: 16, right: 16, flexDirection: 'row', gap: 10 },
-  navBtn: { height: 52, borderRadius: 26, backgroundColor: C.card, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 20, elevation: 5, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6 },
-  navBtnText: { fontSize: 14, color: C.text, fontWeight: '700' },
+  // Search
+  searchArea: { position: 'absolute', left: 16, right: 16, zIndex: 100 },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: T.card, borderRadius: 24, paddingHorizontal: 16, height: 48, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 },
+  searchIn: { flex: 1, fontSize: 14, color: T.text, paddingVertical: 0 },
+  profileBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: T.card, alignItems: 'center', justifyContent: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 },
+  dropdown: { backgroundColor: T.card, borderRadius: 14, marginTop: 8, elevation: 3, overflow: 'hidden', maxHeight: 200, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 },
+  dropItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: T.borderLight },
+  dropName: { fontSize: 14, fontWeight: '600', color: T.text },
+  dropAddr: { fontSize: 11, color: T.textMuted, marginTop: 1 },
 
   // Weather
-  weatherChip: { position: 'absolute', left: 14, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.card, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, elevation: 3, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4 },
-  weatherChipRain: { backgroundColor: '#DBEAFE', borderColor: '#93C5FD' },
-  weatherChipText: { fontSize: 14, fontWeight: '700', color: C.text },
-  weatherAlertBanner: { position: 'absolute', left: 14, right: 14, flexDirection: 'row', alignItems: 'center', backgroundColor: '#DBEAFE', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, elevation: 5, borderWidth: 1, borderColor: '#93C5FD', zIndex: 200 },
-  weatherAlertTitle: { fontSize: 14, fontWeight: '700', color: '#1E3A8A' },
-  weatherAlertBody: { fontSize: 12, color: '#1E40AF', marginTop: 2 },
+  weatherChip: { position: 'absolute', left: 16, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: T.card, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 },
+  weatherTxt: { fontSize: 14, fontWeight: '700', color: T.text },
+  weatherLabel: { fontSize: 12, color: T.textMuted },
+  alertBanner: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center', backgroundColor: '#DBEAFE', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, elevation: 3, zIndex: 200 },
 
-  // Voting
-  voteRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.borderLight },
-  voteBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
-  voteBtnUp: { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' },
-  voteBtnDown: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
-  voteCount: { fontSize: 13, fontWeight: '700', color: C.green },
-  voteCountDown: { fontSize: 13, fontWeight: '700', color: C.red },
-  trustLabel: { flex: 1, textAlign: 'right', fontSize: 11, fontWeight: '600', color: C.textMuted },
+  // Right controls — mid-right, vertically stacked
+  rightCtrls: { position: 'absolute', right: 16, bottom: 280, gap: 10 },
+  ctrlBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: T.card, alignItems: 'center', justifyContent: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 },
+
+  // FAB — bottom center, overlaps sheet edge
+  fabWrap: { position: 'absolute', bottom: 190, left: 0, right: 0, alignItems: 'center', zIndex: 15, pointerEvents: 'box-none' },
+  fab: { width: 56, height: 56, borderRadius: 28, backgroundColor: T.primary, alignItems: 'center', justifyContent: 'center', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 8 },
+  fabIcon: { fontSize: 28, color: '#fff', fontWeight: '300', marginTop: -2 },
+
+  // Bottom sheet
+  sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: T.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingTop: 12, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.08, shadowRadius: 10, zIndex: 20 },
+  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: T.border, alignSelf: 'center', marginBottom: 16 },
+
+  sheetCountsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  sheetChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  sheetDot: { width: 8, height: 8, borderRadius: 4 },
+  sheetChipVal: { fontSize: 14, fontWeight: '700', color: T.text },
+  sheetViewLink: { fontSize: 13, fontWeight: '600', color: T.primary, paddingVertical: 4, paddingHorizontal: 8 },
+
+  sheetTitle: { fontSize: 16, fontWeight: '800', color: T.text, marginBottom: 4 },
+  sheetPending: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
+  sheetPendingTxt: { fontSize: 13, color: T.textMuted },
+
+  sheetNavBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 12, backgroundColor: T.borderLight, marginTop: 16 },
+  sheetNavTxt: { fontSize: 14, fontWeight: '600', color: T.textPrimary },
+
+  // Expanded report list
+  reportList: { marginTop: 16, maxHeight: 300 },
+  reportItem: { borderRadius: 12, padding: 12, marginBottom: 8 },
+
+  // Selected card
+  selCard: { position: 'absolute', bottom: 210, left: 16, right: 80, backgroundColor: T.card, borderRadius: 14, padding: 16, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  badgeDot: { width: 8, height: 8, borderRadius: 4 },
+  badgeTxt: { fontSize: 12, fontWeight: '700' },
+  voteRow: { flexDirection: 'row', gap: 8, marginTop: 10, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: T.borderLight },
+  voteBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: T.borderLight },
 });

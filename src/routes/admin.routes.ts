@@ -11,7 +11,7 @@ export function createAdminRouter(pool: Pool): Router {
       const [
         usersResult, reportsResult, activeReportsResult, severityResult, todayResult,
         weatherAlerts, feedbackResult, apiKeysResult, votesResult, recentUsersResult,
-        notifStats, weeklyReports
+        notifStats, weeklyReports, apiTotalReqs, apiRecentReqs, topPartners
       ] = await Promise.all([
         pool.query('SELECT COUNT(*) as count FROM users'),
         pool.query('SELECT COUNT(*) as count FROM waterlogging_reports'),
@@ -25,6 +25,10 @@ export function createAdminRouter(pool: Pool): Router {
         pool.query("SELECT COUNT(*) as count FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'").catch(() => ({ rows: [{ count: 0 }] })),
         pool.query("SELECT COUNT(*) as total, COUNT(responded_at) as responded FROM notifications WHERE type = 'rain_detection'").catch(() => ({ rows: [{ total: 0, responded: 0 }] })),
         pool.query(`SELECT DATE(created_at) as date, COUNT(*) as count FROM waterlogging_reports WHERE created_at >= CURRENT_DATE - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY date`).catch(() => ({ rows: [] })),
+        pool.query("SELECT COUNT(*) as count FROM api_request_logs").catch(() => ({ rows: [{ count: 0 }] })),
+        pool.query("SELECT COUNT(*) as count FROM api_request_logs WHERE created_at >= NOW() - INTERVAL '24 hours'").catch(() => ({ rows: [{ count: 0 }] })),
+        pool.query(`SELECT k.partner_name, k.request_count, k.last_used_at
+           FROM api_keys k WHERE k.is_active = true ORDER BY k.request_count DESC LIMIT 5`).catch(() => ({ rows: [] })),
       ]);
 
       const severityMap: Record<string, number> = { Low: 0, Medium: 0, High: 0 };
@@ -45,6 +49,11 @@ export function createAdminRouter(pool: Pool): Router {
         newUsersThisWeek: parseInt(recentUsersResult.rows[0].count),
         notifications: { total: parseInt(nStats.total), responded: parseInt(nStats.responded) },
         weeklyReports: weeklyReports.rows,
+        apiStats: {
+          totalRequests: parseInt(apiTotalReqs.rows[0].count),
+          last24h: parseInt(apiRecentReqs.rows[0].count),
+          topPartners: topPartners.rows,
+        },
       });
     } catch (error) {
       console.error('Stats error:', error);

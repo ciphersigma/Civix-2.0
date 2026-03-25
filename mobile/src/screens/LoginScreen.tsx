@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
-  StatusBar, ScrollView,
+  StatusBar, ScrollView, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthService } from '../services/AuthService';
+import { Theme as T } from '../components/ui';
 
 type Mode = 'login' | 'signup';
 type Step = 'form' | 'otp';
@@ -51,57 +52,71 @@ export const LoginScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={s.container}>
-      <StatusBar backgroundColor="#F8FAFC" barStyle="dark-content" />
+      <StatusBar backgroundColor={T.bg} barStyle="dark-content" />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={s.logoWrap}>
-            <View style={s.logoCircle}><Text style={s.logoEmoji}>🌊</Text></View>
-            <Text style={s.title}>CIVIX</Text>
-            <Text style={s.tagline}>Waterlogging Alert System</Text>
+        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+
+          {/* Logo */}
+          <View style={s.logoArea}>
+            <Image source={require('../assets/logo.png')} style={{ width: 64, height: 64, marginBottom: 20 }} resizeMode="contain" />
+            <Text style={s.title}>Welcome to Civix</Text>
+            <Text style={s.subtitle}>Sign in to access safer routes</Text>
           </View>
 
+          {/* Tab switcher */}
           <View style={s.tabRow}>
-            <TouchableOpacity style={[s.tab, mode === 'login' && s.tabActive]} onPress={() => switchMode('login')}>
-              <Text style={[s.tabText, mode === 'login' && s.tabTextActive]}>Login</Text>
+            <TouchableOpacity style={[s.tab, mode === 'login' && s.tabOn]} onPress={() => switchMode('login')}>
+              <Text style={[s.tabTxt, mode === 'login' && s.tabTxtOn]}>Login</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[s.tab, mode === 'signup' && s.tabActive]} onPress={() => switchMode('signup')}>
-              <Text style={[s.tabText, mode === 'signup' && s.tabTextActive]}>Sign Up</Text>
+            <TouchableOpacity style={[s.tab, mode === 'signup' && s.tabOn]} onPress={() => switchMode('signup')}>
+              <Text style={[s.tabTxt, mode === 'signup' && s.tabTxtOn]}>Sign Up</Text>
             </TouchableOpacity>
           </View>
 
           {step === 'form' ? (
-            <>
+            <View style={s.formArea}>
               {mode === 'signup' && (
-                <View style={s.inputWrap}>
-                  <Text style={s.inputIcon}>👤</Text>
-                  <TextInput style={s.input} placeholder="Full Name" placeholderTextColor="#94A3B8" value={fullName} onChangeText={setFullName} editable={!loading} autoCapitalize="words" />
-                </View>
+                <>
+                  <Text style={s.label}>Full Name</Text>
+                  <View style={s.inputWrap}>
+                    <TextInput style={s.input} placeholder="Your name" placeholderTextColor={T.textMuted} value={fullName} onChangeText={setFullName} editable={!loading} autoCapitalize="words" />
+                  </View>
+                </>
               )}
+              <Text style={s.label}>Email Address</Text>
               <View style={s.inputWrap}>
-                <Text style={s.inputIcon}>✉️</Text>
-                <TextInput style={s.input} placeholder="Email address" placeholderTextColor="#94A3B8" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" editable={!loading} />
+                <TextInput style={s.input} placeholder="your.email@example.com" placeholderTextColor={T.textMuted} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" editable={!loading} />
               </View>
-              <TouchableOpacity style={[s.btn, loading && s.btnDisabled]} onPress={handleSendOTP} disabled={loading} activeOpacity={0.85}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Get Verification Code</Text>}
-              </TouchableOpacity>
-            </>
+              <Text style={s.hint}>We'll send you a one-time code to verify your email</Text>
+            </View>
           ) : (
-            <>
+            <View style={s.formArea}>
+              <Text style={s.label}>Verification Code</Text>
               <Text style={s.otpHint}>Enter the 6-digit code sent to {email.trim()}</Text>
               <View style={s.inputWrap}>
-                <Text style={s.inputIcon}>🔑</Text>
-                <TextInput style={s.input} placeholder="Enter 6-digit code" placeholderTextColor="#94A3B8" value={otp} onChangeText={setOtp} keyboardType="number-pad" maxLength={6} editable={!loading} autoFocus />
+                <TextInput style={[s.input, { textAlign: 'center', fontSize: 22, letterSpacing: 8 }]} placeholder="000000" placeholderTextColor={T.textMuted} value={otp} onChangeText={setOtp} keyboardType="number-pad" maxLength={6} editable={!loading} autoFocus />
               </View>
-              <TouchableOpacity style={[s.btn, loading && s.btnDisabled]} onPress={handleVerifyOTP} disabled={loading} activeOpacity={0.85}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Verify & Continue</Text>}
-              </TouchableOpacity>
               <View style={s.otpLinks}>
-                <TouchableOpacity onPress={() => { setStep('form'); setOtp(''); }} disabled={loading}><Text style={s.linkText}>← Back</Text></TouchableOpacity>
-                <TouchableOpacity onPress={handleSendOTP} disabled={loading}><Text style={s.linkText}>Resend Code</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => { setStep('form'); setOtp(''); }} disabled={loading}><Text style={s.link}>← Back</Text></TouchableOpacity>
+                <TouchableOpacity onPress={handleSendOTP} disabled={loading}><Text style={s.link}>Resend Code</Text></TouchableOpacity>
               </View>
-            </>
+            </View>
           )}
-          <Text style={s.footer}>Works offline · Reports sync automatically</Text>
+
+          {/* Spacer pushes button to bottom */}
+          <View style={{ flex: 1 }} />
+
+          {/* CTA */}
+          <TouchableOpacity
+            style={[s.cta, loading && { opacity: 0.6 }]}
+            onPress={step === 'form' ? handleSendOTP : handleVerifyOTP}
+            disabled={loading} activeOpacity={0.85}>
+            {loading ? <ActivityIndicator color="#fff" /> : (
+              <Text style={s.ctaText}>{step === 'form' ? 'Continue' : 'Verify & Continue'}</Text>
+            )}
+          </TouchableOpacity>
+
+          <Text style={s.terms}>By continuing, you agree to our Terms of Service and{'\n'}Privacy Policy</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -109,26 +124,29 @@ export const LoginScreen = ({ navigation }: any) => {
 };
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 40 },
-  logoWrap: { alignItems: 'center', marginBottom: 24 },
-  logoCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 1, borderColor: '#C7D2FE' },
-  logoEmoji: { fontSize: 36 },
-  title: { fontSize: 28, fontWeight: '800', color: '#1E293B', letterSpacing: 1 },
-  tagline: { fontSize: 13, color: '#94A3B8', marginTop: 4 },
-  tabRow: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 14, padding: 4, marginBottom: 20, borderWidth: 1, borderColor: '#E2E8F0' },
-  tab: { flex: 1, paddingVertical: 12, borderRadius: 11, alignItems: 'center' },
-  tabActive: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2 },
-  tabText: { fontSize: 15, fontWeight: '600', color: '#94A3B8' },
-  tabTextActive: { color: '#6366F1' },
-  otpHint: { fontSize: 13, color: '#64748B', marginBottom: 16 },
-  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 14, height: 54, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12 },
-  inputIcon: { fontSize: 18, marginRight: 10 },
-  input: { flex: 1, fontSize: 15, color: '#1E293B', paddingVertical: 0 },
-  btn: { backgroundColor: '#6366F1', height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8, elevation: 3, shadowColor: '#6366F1', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 8 },
-  btnDisabled: { backgroundColor: '#A5B4FC' },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  otpLinks: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14, paddingHorizontal: 4 },
-  linkText: { color: '#6366F1', fontSize: 13, fontWeight: '500' },
-  footer: { textAlign: 'center', color: '#CBD5E1', fontSize: 12, marginTop: 20 },
+  container: { flex: 1, backgroundColor: T.bg },
+  scroll: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 32 },
+
+  logoArea: { alignItems: 'center', marginBottom: 40 },
+  title: { fontSize: 24, fontWeight: '800', color: T.text, letterSpacing: -0.5 },
+  subtitle: { fontSize: 14, color: T.textMuted, marginTop: 8 },
+
+  tabRow: { flexDirection: 'row', backgroundColor: T.borderLight, borderRadius: 12, padding: 4, marginBottom: 24 },
+  tab: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
+  tabOn: { backgroundColor: T.card, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3 },
+  tabTxt: { fontSize: 14, fontWeight: '600', color: T.textMuted },
+  tabTxtOn: { color: T.primary },
+
+  formArea: { marginBottom: 16 },
+  label: { fontSize: 14, fontWeight: '600', color: T.text, marginBottom: 8 },
+  inputWrap: { backgroundColor: T.card, borderRadius: 12, borderWidth: 1, borderColor: T.border, paddingHorizontal: 16, height: 48, justifyContent: 'center', marginBottom: 16 },
+  input: { fontSize: 15, color: T.text, paddingVertical: 0 },
+  hint: { fontSize: 13, color: T.textMuted, marginTop: 0 },
+  otpHint: { fontSize: 13, color: T.textSec, marginBottom: 16 },
+  otpLinks: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  link: { color: T.primary, fontSize: 13, fontWeight: '600' },
+
+  cta: { backgroundColor: T.primary, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  ctaText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  terms: { textAlign: 'center', fontSize: 12, color: T.textMuted, lineHeight: 18 },
 });

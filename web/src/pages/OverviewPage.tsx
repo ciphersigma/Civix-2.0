@@ -1,115 +1,79 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ApiService from '../services/api';
-import { themed } from '../styles/theme';
 
-const sevColors: Record<string, string> = { High: '#ef4444', Medium: '#f97316', Low: '#eab308' };
+const SC: Record<string, string> = { High: '#ef4444', Medium: '#f97316', Low: '#eab308' };
 
 const OverviewPage: React.FC = () => {
-  const [stats, setStats] = useState<any>(null);
-  const [reports, setReports] = useState<any[]>([]);
+  const [s, setS] = useState<any>(null);
+  const [reps, setReps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [s, r] = await Promise.all([ApiService.getStats(), ApiService.getReports({ limit: 5 })]);
-        setStats(s.data);
-        setReports(r.data.reports || []);
+        const [st, rp] = await Promise.all([ApiService.getStats(), ApiService.getReports({ limit: 6 })]);
+        setS(st.data); setReps(rp.data.reports || []);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     })();
   }, []);
 
   if (loading) return (
-    <div>
-      <div className="skeleton" style={{ height: 120, borderRadius: 16, marginBottom: 20 }} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 14, marginBottom: 20 }}>
-        {[0,1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 80, borderRadius: 12 }} />)}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="skeleton" style={{ height: 100, borderRadius: 16 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+        {[0,1,2].map(i => <div key={i} className="skeleton" style={{ height: 90, borderRadius: 14 }} />)}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div className="skeleton" style={{ height: 260, borderRadius: 12 }} />
-        <div className="skeleton" style={{ height: 260, borderRadius: 12 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 }}>
+        <div className="skeleton" style={{ height: 280, borderRadius: 14 }} />
+        <div className="skeleton" style={{ height: 280, borderRadius: 14 }} />
       </div>
     </div>
   );
 
-  const sev = stats?.severityBreakdown || { Low: 0, Medium: 0, High: 0 };
-  const totalActive = stats?.activeReports || 0;
-  const weekly = stats?.weeklyReports || [];
+  const sev = s?.severityBreakdown || { Low: 0, Medium: 0, High: 0 };
+  const active = s?.activeReports || 0;
+  const weekly = s?.weeklyReports || [];
   const maxW = Math.max(...weekly.map((d: any) => parseInt(d.count) || 0), 1);
-  const nStats = stats?.notifications || { total: 0, responded: 0 };
-  const respRate = nStats.total > 0 ? Math.round((nStats.responded / nStats.total) * 100) : 0;
+  const nS = s?.notifications || { total: 0, responded: 0 };
+  const rr = nS.total > 0 ? Math.round((nS.responded / nS.total) * 100) : 0;
 
   return (
-    <div>
-      {/* Hero strip */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 400px', padding: '28px 32px', borderRadius: 16, background: 'linear-gradient(135deg, #312e81 0%, #1e1b4b 100%)', color: '#fff', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: -20, right: -10, fontSize: 100, opacity: 0.05, lineHeight: 1 }}>📊</div>
-          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1.2, opacity: 0.5, marginBottom: 14 }}>Platform overview</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 24, flexWrap: 'wrap' }}>
-            <div>
-              <span style={{ fontSize: 44, fontWeight: 800, letterSpacing: -2, lineHeight: 1 }}>{stats?.totalReports ?? 0}</span>
-              <span style={{ fontSize: 13, opacity: 0.5, marginLeft: 8 }}>total reports</span>
-            </div>
-            <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.12)' }} />
-            <div>
-              <span style={{ fontSize: 28, fontWeight: 700, letterSpacing: -1 }}>{stats?.totalUsers ?? 0}</span>
-              <span style={{ fontSize: 13, opacity: 0.45, marginLeft: 6 }}>users</span>
-            </div>
-            <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.12)' }} />
-            <div>
-              <span style={{ fontSize: 28, fontWeight: 700, color: '#4ade80' }}>{totalActive}</span>
-              <span style={{ fontSize: 13, opacity: 0.45, marginLeft: 6 }}>active now</span>
-            </div>
-          </div>
-          <div style={{ marginTop: 14, display: 'flex', gap: 20, fontSize: 12, opacity: 0.45 }}>
-            <span>{stats?.reportsToday ?? 0} reports today</span>
-            <span>·</span>
-            <span>{stats?.newUsersThisWeek ?? 0} new users this week</span>
-          </div>
-        </div>
+    <div style={{ maxWidth: 1100 }}>
 
-        {/* Quick stats sidebar */}
-        <div style={{ flex: '0 0 220px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <QuickStat icon="🌧" label="Weather alerts" value={stats?.weatherAlerts ?? 0} to="/dashboard/weather" />
-          <QuickStat icon="💬" label="Feedback" value={stats?.totalFeedback ?? 0} to="/dashboard/feedback" />
-          <QuickStat icon="🔑" label="API keys" value={stats?.activeApiKeys ?? 0} to="/dashboard/api-keys" />
-          <QuickStat icon="👍" label="Community votes" value={stats?.totalVotes ?? 0} />
-        </div>
+      {/* ── Row 1: Big number strip ── */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border-primary)' }}>
+        <BigNum value={s?.totalReports ?? 0} label="Total reports" color="#6366f1" first />
+        <BigNum value={s?.totalUsers ?? 0} label="Registered users" color="#8b5cf6" />
+        <BigNum value={active} label="Active right now" color={active > 0 ? '#ef4444' : '#22c55e'} />
+        <BigNum value={s?.reportsToday ?? 0} label="Reported today" color="#3b82f6" />
+        <BigNum value={s?.newUsersThisWeek ?? 0} label="New this week" color="#22c55e" last />
       </div>
 
-      {/* Metric tiles row */}
-      <div style={metricsRow} className="overview-metrics-row">
-        <Tile label="Active Reports" value={totalActive} accent="#ef4444" sub={`${sev.High} high · ${sev.Medium} med · ${sev.Low} low`} />
-        <Tile label="Reports Today" value={stats?.reportsToday ?? 0} accent="#6366f1" />
-        <Tile label="Rain Notifications" value={nStats.total} accent="#3b82f6" sub={`${respRate}% response rate`} />
-        <Tile label="New Users (7d)" value={stats?.newUsersThisWeek ?? 0} accent="#22c55e" />
-      </div>
+      {/* ── Row 2: Severity + Activity chart ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16, marginBottom: 20 }} className="overview-bottom-row">
 
-      {/* Middle: severity + 7-day chart */}
-      <div style={twoCol} className="overview-bottom-row">
-        {/* Severity breakdown */}
-        <div style={card}>
-          <p style={label}>Active report severity</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <SevRing sev={sev} total={totalActive || 1} />
-            <div style={{ flex: 1 }}>
-              {(['High', 'Medium', 'Low'] as const).map(s => {
-                const count = sev[s] || 0;
-                const pct = totalActive > 0 ? Math.round((count / totalActive) * 100) : 0;
+        {/* Severity card — tall, narrow */}
+        <div style={C.card}>
+          <div style={C.lbl}>Severity</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+            <Ring sev={sev} total={active || 1} />
+            <div style={{ width: '100%' }}>
+              {(['High','Medium','Low'] as const).map(k => {
+                const v = sev[k] || 0;
+                const p = active > 0 ? Math.round((v / active) * 100) : 0;
                 return (
-                  <div key={s} style={{ marginBottom: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: sevColors[s] }} />
-                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{s}</span>
+                  <div key={k} style={{ marginBottom: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: '50%', background: SC[k] }} />
+                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>{k}</span>
                       </span>
-                      <span style={{ fontSize: 12, color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}>{count} ({pct}%)</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{v}</span>
                     </div>
-                    <div style={{ height: 5, borderRadius: 3, background: 'var(--border-primary)', overflow: 'hidden' }}>
-                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 3, background: sevColors[s], transition: 'width 0.6s ease' }} />
+                    <div style={{ height: 6, borderRadius: 3, background: 'var(--border-primary)', overflow: 'hidden' }}>
+                      <div style={{ width: `${p}%`, height: '100%', borderRadius: 3, background: SC[k], transition: 'width 0.5s ease' }} />
                     </div>
                   </div>
                 );
@@ -118,144 +82,178 @@ const OverviewPage: React.FC = () => {
           </div>
         </div>
 
-        {/* 7-day report activity */}
-        <div style={card}>
-          <p style={label}>Last 7 days</p>
-          {weekly.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-faint)', fontSize: 14 }}>No reports this week</div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 120 }}>
-              {weekly.map((d: any) => {
-                const count = parseInt(d.count) || 0;
+        {/* Activity chart + quick links */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* 7-day chart */}
+          <div style={{ ...C.card, flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={C.lbl}>7-day activity</div>
+              <Link to="/dashboard/analytics" style={{ fontSize: 12, color: '#6366f1', fontWeight: 600, textDecoration: 'none' }}>Analytics →</Link>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 100 }}>
+              {weekly.length === 0 ? (
+                <div style={{ flex: 1, textAlign: 'center', color: 'var(--text-faint)', fontSize: 13, paddingTop: 40 }}>No data yet</div>
+              ) : weekly.map((d: any) => {
+                const c = parseInt(d.count) || 0;
                 const dt = new Date(d.date);
-                const isToday = dt.toDateString() === new Date().toDateString();
+                const today = dt.toDateString() === new Date().toDateString();
                 return (
-                  <div key={d.date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+                  <div key={d.date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: today ? '#6366f1' : 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}>{c || ''}</span>
                     <div style={{
-                      width: '100%', maxWidth: 48, borderRadius: '4px 4px 0 0',
-                      background: isToday ? '#6366f1' : count > 0 ? 'linear-gradient(180deg, #6366f1, #8b5cf6)' : 'var(--border-primary)',
-                      height: `${Math.max((count / maxW) * 80, 4)}px`,
-                      opacity: count > 0 ? (isToday ? 1 : 0.7) : 0.3,
+                      width: '100%', maxWidth: 40, borderRadius: 6,
+                      height: `${Math.max((c / maxW) * 70, c > 0 ? 8 : 3)}px`,
+                      background: today ? '#6366f1' : c > 0 ? 'var(--text-faint)' : 'var(--border-primary)',
+                      opacity: today ? 1 : c > 0 ? 0.35 : 0.15,
                       transition: 'height 0.4s ease',
                     }} />
-                    <span style={{ fontSize: 10, color: isToday ? '#6366f1' : 'var(--text-faint)', fontWeight: isToday ? 700 : 400 }}>
-                      {isToday ? 'Today' : dt.toLocaleDateString(undefined, { weekday: 'short' })}
+                    <span style={{ fontSize: 10, color: today ? '#6366f1' : 'var(--text-faint)', fontWeight: today ? 700 : 400 }}>
+                      {today ? 'Today' : dt.toLocaleDateString(undefined, { weekday: 'short' })}
                     </span>
                   </div>
                 );
               })}
             </div>
-          )}
+          </div>
+
+          {/* Quick links row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
+            <QLink icon="🌧" val={s?.weatherAlerts ?? 0} label="Weather" to="/dashboard/weather" />
+            <QLink icon="💬" val={s?.totalFeedback ?? 0} label="Feedback" to="/dashboard/feedback" />
+            <QLink icon="🔑" val={s?.activeApiKeys ?? 0} label="API Keys" to="/dashboard/api-keys" />
+            <QLink icon="👍" val={s?.totalVotes ?? 0} label="Votes" />
+          </div>
         </div>
       </div>
 
-      {/* Bottom: Platform status + Recent reports */}
-      <div style={{ ...twoCol, marginTop: 20 }} className="overview-bottom-row">
-        {/* Platform status */}
-        <div style={card}>
-          <p style={label}>System status</p>
-          {[
-            { name: 'API Server', status: 'Operational' },
-            { name: 'Database (Neon)', status: 'Operational' },
-            { name: 'Redis (Upstash)', status: 'Operational' },
-            { name: 'Weather Service', status: 'Operational' },
-            { name: 'FCM Push', status: stats?.weatherAlerts > 0 ? 'Operational' : 'Standby' },
-          ].map((item, i, arr) => (
-            <div key={item.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--border-secondary)' : 'none' }}>
-              <span style={{ fontSize: 14, color: 'var(--text-secondary)', fontWeight: 500 }}>{item.name}</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: item.status === 'Operational' ? '#22c55e' : '#eab308', fontWeight: 600 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: item.status === 'Operational' ? '#22c55e' : '#eab308' }} />
-                {item.status}
-              </span>
-            </div>
-          ))}
-        </div>
+      {/* ── Row 3: Recent reports + System ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16 }} className="overview-bottom-row">
 
         {/* Recent reports */}
-        <div style={card}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <p style={{ ...label, marginBottom: 0 }}>Recent reports</p>
-            <Link to="/dashboard/reports" style={{ fontSize: 12, color: '#6366f1', fontWeight: 600, textDecoration: 'none' }}>View all →</Link>
+        <div style={C.card}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div style={C.lbl}>Recent reports</div>
+            <Link to="/dashboard/reports" style={{ fontSize: 12, color: '#6366f1', fontWeight: 600, textDecoration: 'none' }}>All reports →</Link>
           </div>
-          {reports.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-faint)', fontSize: 14 }}>No reports yet</div>
+          {reps.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--text-faint)' }}>No reports yet</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {reports.map((r: any, i: number) => (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < reports.length - 1 ? '1px solid var(--border-secondary)' : 'none' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: sevColors[r.severity] || '#94a3b8', flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{r.severity} — {r.report_type}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>
-                      {r.latitude ? `${Number(r.latitude).toFixed(3)}°, ${Number(r.longitude).toFixed(3)}°` : '—'}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 12, color: r.is_active ? '#22c55e' : 'var(--text-faint)', fontWeight: 600 }}>{r.is_active ? 'Active' : 'Expired'}</div>
-                    <div style={{ fontSize: 10, color: 'var(--text-faint)' }}>{new Date(r.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>{['Severity','Type','Status','Coords','Time'].map(h => <th key={h} style={C.th}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {reps.map((r: any) => (
+                  <tr key={r.id} className="dash-row">
+                    <td style={C.td}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: SC[r.severity] || '#94a3b8' }} />
+                        <span style={{ fontWeight: 600, color: SC[r.severity] || 'var(--text-secondary)', fontSize: 13 }}>{r.severity}</span>
+                      </span>
+                    </td>
+                    <td style={{ ...C.td, textTransform: 'capitalize' }}>{r.report_type}</td>
+                    <td style={C.td}>
+                      {r.is_active
+                        ? <span style={{ color: '#22c55e', fontWeight: 600 }}>Active</span>
+                        : <span style={{ color: 'var(--text-faint)' }}>Expired</span>}
+                    </td>
+                    <td style={{ ...C.td, fontFamily: 'monospace', fontSize: 11, color: 'var(--text-faint)' }}>
+                      {r.latitude ? `${Number(r.latitude).toFixed(3)}, ${Number(r.longitude).toFixed(3)}` : '—'}
+                    </td>
+                    <td style={{ ...C.td, color: 'var(--text-faint)', fontSize: 12 }}>{timeAgo(r.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
+        </div>
+
+        {/* System status */}
+        <div style={C.card}>
+          <div style={C.lbl}>System</div>
+          {[
+            { n: 'API', ok: true },
+            { n: 'Database', ok: true },
+            { n: 'Redis', ok: true },
+            { n: 'Weather', ok: true },
+            { n: 'FCM Push', ok: (s?.weatherAlerts ?? 0) > 0 },
+          ].map((x, i, a) => (
+            <div key={x.n} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: i < a.length - 1 ? '1px solid var(--border-secondary)' : 'none' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{x.n}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: x.ok ? '#22c55e' : '#eab308' }}>{x.ok ? '● Up' : '○ Idle'}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 };
 
-/* Components */
-const QuickStat: React.FC<{ icon: string; label: string; value: number; to?: string }> = ({ icon, label, value, to }) => {
+/* ── Components ── */
+
+const BigNum: React.FC<{ value: number; label: string; color: string; first?: boolean; last?: boolean }> = ({ value, label, color, first, last }) => (
+  <div style={{
+    flex: 1, padding: '20px 22px', background: 'var(--bg-secondary)',
+    borderRight: last ? 'none' : '1px solid var(--border-primary)',
+    position: 'relative', overflow: 'hidden',
+  }}>
+    <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 3, background: color, opacity: 0.5 }} />
+    <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: -1.5, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value.toLocaleString()}</div>
+    <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 6, fontWeight: 500 }}>{label}</div>
+  </div>
+);
+
+const QLink: React.FC<{ icon: string; val: number; label: string; to?: string }> = ({ icon, val, label, to }) => {
   const inner = (
-    <div style={{ padding: '14px 16px', borderRadius: 12, border: '1px solid var(--border-primary)', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', gap: 12, cursor: to ? 'pointer' : 'default', transition: 'border-color 0.15s' }}>
-      <span style={{ fontSize: 18 }}>{icon}</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-        <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>{label}</div>
-      </div>
+    <div style={{ padding: '14px 16px', borderRadius: 12, border: '1px solid var(--border-primary)', background: 'var(--bg-secondary)', textAlign: 'center', transition: 'border-color 0.15s, transform 0.1s', cursor: to ? 'pointer' : 'default' }}>
+      <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{val}</div>
+      <div style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
     </div>
   );
   return to ? <Link to={to} style={{ textDecoration: 'none' }}>{inner}</Link> : inner;
 };
 
-const Tile: React.FC<{ label: string; value: number; accent: string; sub?: string }> = ({ label, value, accent, sub }) => (
-  <div style={{ padding: '18px 20px', borderRadius: 12, border: '1px solid var(--border-primary)', background: 'var(--bg-secondary)', position: 'relative', overflow: 'hidden' }}>
-    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 3, background: accent, opacity: 0.7 }} />
-    <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-1px', fontVariantNumeric: 'tabular-nums', lineHeight: 1, marginBottom: 6 }}>{value.toLocaleString()}</div>
-    <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{label}</div>
-    {sub && <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 4 }}>{sub}</div>}
-  </div>
-);
-
-const SevRing: React.FC<{ sev: { High: number; Medium: number; Low: number }; total: number }> = ({ sev, total }) => {
-  const data = [
-    { key: 'High', color: '#ef4444', pct: (sev.High / total) * 100 },
-    { key: 'Medium', color: '#f97316', pct: (sev.Medium / total) * 100 },
-    { key: 'Low', color: '#eab308', pct: (sev.Low / total) * 100 },
+const Ring: React.FC<{ sev: { High: number; Medium: number; Low: number }; total: number }> = ({ sev, total }) => {
+  const d = [
+    { k: 'High', c: '#ef4444', p: (sev.High / total) * 100 },
+    { k: 'Medium', c: '#f97316', p: (sev.Medium / total) * 100 },
+    { k: 'Low', c: '#eab308', p: (sev.Low / total) * 100 },
   ];
-  let offset = 0;
+  let o = 0;
   return (
-    <div style={{ position: 'relative', width: 100, height: 100, flexShrink: 0 }}>
+    <div style={{ position: 'relative', width: 110, height: 110 }}>
       <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-        <circle cx="18" cy="18" r="14" fill="none" stroke="var(--border-primary)" strokeWidth="3" />
-        {data.map(d => {
-          const el = <circle key={d.key} cx="18" cy="18" r="14" fill="none" stroke={d.color} strokeWidth="3.5" strokeDasharray={`${d.pct * 0.88} ${88 - d.pct * 0.88}`} strokeDashoffset={-offset * 0.88} strokeLinecap="round" />;
-          offset += d.pct;
+        <circle cx="18" cy="18" r="14" fill="none" stroke="var(--border-primary)" strokeWidth="2.5" />
+        {d.map(x => {
+          const el = <circle key={x.k} cx="18" cy="18" r="14" fill="none" stroke={x.c} strokeWidth="3.5" strokeDasharray={`${x.p * 0.88} ${88 - x.p * 0.88}`} strokeDashoffset={-o * 0.88} strokeLinecap="round" />;
+          o += x.p;
           return el;
         })}
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>{total}</span>
-        <span style={{ fontSize: 9, color: 'var(--text-faint)', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active</span>
+        <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{total}</span>
+        <span style={{ fontSize: 9, color: 'var(--text-faint)', marginTop: 3, textTransform: 'uppercase', letterSpacing: 0.8 }}>Active</span>
       </div>
     </div>
   );
 };
 
-const metricsRow: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 };
-const twoCol: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' };
-const card: React.CSSProperties = { padding: 22, borderRadius: 14, border: '1px solid var(--border-primary)', background: 'var(--bg-secondary)' };
-const label: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '0 0 16px' };
+const timeAgo = (d: string) => {
+  if (!d) return '';
+  const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+  if (m < 1) return 'Just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+};
+
+const C = {
+  card: { padding: '20px 22px', borderRadius: 14, border: '1px solid var(--border-primary)', background: 'var(--bg-secondary)' } as React.CSSProperties,
+  lbl: { fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 14 } as React.CSSProperties,
+  th: { textAlign: 'left', padding: '8px 10px', fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--border-primary)' } as React.CSSProperties,
+  td: { padding: '10px 10px', fontSize: 13, color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-secondary)' } as React.CSSProperties,
+};
 
 export default OverviewPage;

@@ -1,168 +1,124 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView,
-  StatusBar, ActivityIndicator, RefreshControl, Platform,
+  StatusBar, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthService } from '../services/AuthService';
 import { ReportService } from '../services/ReportService';
 import { api } from '../services/api';
+import { Theme as T } from '../components/ui';
 
-interface UserProfile {
-  email: string;
-  fullName?: string;
-  userId: string;
-  totalReports: number;
-  pendingReports: number;
-  memberSince: string;
-}
+interface UserProfile { email: string; fullName?: string; userId: string; totalReports: number; pendingReports: number; memberSince: string; }
 
 export const ProfileScreen = ({ navigation }: any) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadProfile = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
       const auth = await AuthService.getAuthData();
       if (!auth) { navigation.reset({ index: 0, routes: [{ name: 'Login' }] }); return; }
-      const pendingCount = await ReportService.getPendingCount();
-      let serverName = auth.fullName || '';
-      let userEmail = auth.email || '';
-      let totalReports = 0;
-      let memberSince = '';
+      const pending = await ReportService.getPendingCount();
+      let name = auth.fullName || '', email = auth.email || '', total = 0, since = '';
       try {
-        const res = await api.get('/auth/me');
-        if (res && res.data) {
-          serverName = res.data.full_name || res.data.fullName || auth.fullName || '';
-          userEmail = res.data.email || auth.email || '';
-          totalReports = res.data.daily_report_count || 0;
-          memberSince = res.data.created_at || '';
-        }
-      } catch (apiErr) {
-        console.log('Profile API error:', apiErr);
-      }
-      setProfile({ email: userEmail, fullName: serverName, userId: auth.userId, totalReports, pendingReports: pendingCount, memberSince });
-    } catch (e) { console.error('Profile load error:', e); }
+        const r = await api.get('/auth/me');
+        if (r?.data) { name = r.data.full_name || r.data.fullName || name; email = r.data.email || email; total = r.data.daily_report_count || 0; since = r.data.created_at || ''; }
+      } catch {}
+      setProfile({ email, fullName: name, userId: auth.userId, totalReports: total, pendingReports: pending, memberSince: since });
+    } catch (e) { console.error(e); }
     finally { setLoading(false); setRefreshing(false); }
   }, [navigation]);
 
-  useEffect(() => { loadProfile(); }, [loadProfile]);
-  const onRefresh = () => { setRefreshing(true); loadProfile(); };
+  useEffect(() => { load(); }, [load]);
 
-  const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: async () => { await AuthService.logout(); navigation.reset({ index: 0, routes: [{ name: 'Login' }] }); } },
-    ]);
-  };
+  const logout = () => Alert.alert('Logout', 'Are you sure?', [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Logout', style: 'destructive', onPress: async () => { await AuthService.logout(); navigation.reset({ index: 0, routes: [{ name: 'Login' }] }); } },
+  ]);
 
-  const handleSync = async () => {
-    if (!profile || profile.pendingReports === 0) return;
-    try {
-      const res = await ReportService.syncPendingReports();
-      Alert.alert('Sync Complete', `${res.synced} report(s) synced.`);
-      loadProfile();
-    } catch { Alert.alert('Error', 'Sync failed.'); }
-  };
+  if (loading) return (
+    <SafeAreaView style={s.root}><StatusBar backgroundColor={T.bg} barStyle="dark-content" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={T.primary} /></View>
+    </SafeAreaView>
+  );
 
-  const getInitials = (name?: string, email?: string) => {
-    if (name?.trim()) return name.trim().split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    if (email) return email[0].toUpperCase();
-    return '?';
-  };
-
-  const formatDate = (d: string) => {
-    if (!d) return 'N/A';
-    return new Date(d).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-  };
-
-  if (loading) {
-    return (
-      <SafeAreaView style={s.container}>
-        <StatusBar backgroundColor="#F8FAFC" barStyle="dark-content" />
-        <View style={s.loadingWrap}><ActivityIndicator size="large" color="#6366F1" /></View>
-      </SafeAreaView>
-    );
-  }
+  const trustScore = 87; // placeholder — could compute from vote data
+  const helped = 156; // placeholder
 
   return (
-    <SafeAreaView style={s.container}>
-      <StatusBar backgroundColor="#F8FAFC" barStyle="dark-content" />
-      <ScrollView contentContainerStyle={s.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366F1']} tintColor="#6366F1" />}
-        showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={s.root}>
+      <StatusBar backgroundColor={T.bg} barStyle="dark-content" />
+      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} colors={[T.primary]} />}>
 
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><Text style={s.backIcon}>←</Text></TouchableOpacity>
-          <Text style={s.headerTitle}>Profile</Text>
-          <View style={{ width: 40 }} />
-        </View>
+        {/* Header */}
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.back}><Text style={{ fontSize: 18, color: T.textSec }}>←</Text></TouchableOpacity>
+        <Text style={s.title}>Profile</Text>
 
-        {/* Avatar */}
-        <View style={s.avatarCard}>
-          <View style={s.avatarGlow}>
-            <View style={s.avatarCircle}><Text style={s.avatarText}>{getInitials(profile?.fullName, profile?.email)}</Text></View>
+        {/* User card */}
+        <View style={s.userCard}>
+          <View style={s.avatar}><Text style={{ fontSize: 22, color: '#fff' }}>👤</Text></View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.name}>{profile?.fullName || 'Civix User'}</Text>
+            <Text style={s.email}>✉ {profile?.email}</Text>
           </View>
-          <Text style={s.userName}>{profile?.fullName || 'CIVIX User'}</Text>
-          <Text style={s.userEmail}>{profile?.email}</Text>
-          {profile?.memberSince ? (
-            <View style={s.memberBadge}>
-              <View style={s.memberDot} />
-              <Text style={s.memberText}>Member since {formatDate(profile.memberSince)}</Text>
-            </View>
-          ) : null}
         </View>
 
-        {/* Stats */}
+        {/* Trust score */}
+        <View style={s.trustCard}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={s.trustIcon}><Text style={{ fontSize: 16 }}>📈</Text></View>
+              <View>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: T.text }}>Trust Score</Text>
+                <Text style={{ fontSize: 12, color: T.textMuted }}>Community reliability</Text>
+              </View>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={{ fontSize: 28, fontWeight: '800', color: T.text }}>{trustScore}</Text>
+              <Text style={{ fontSize: 11, color: T.textMuted }}>out of 100</Text>
+            </View>
+          </View>
+          <View style={s.trustBar}><View style={[s.trustFill, { width: `${trustScore}%` }]} /></View>
+        </View>
+
+        {/* Stats row */}
         <View style={s.statsRow}>
           <View style={s.statCard}>
-            <Text style={s.statNumber}>{profile?.totalReports || 0}</Text>
-            <Text style={s.statLabel}>Reports Today</Text>
+            <View style={[s.statIcon, { backgroundColor: '#EEF2FF' }]}><Text style={{ fontSize: 16 }}>📍</Text></View>
+            <Text style={s.statNum}>{profile?.totalReports || 0}</Text>
+            <Text style={s.statLabel}>Reports</Text>
           </View>
           <View style={s.statCard}>
-            <Text style={[s.statNumber, { color: '#EAB308' }]}>{profile?.pendingReports || 0}</Text>
-            <Text style={s.statLabel}>Pending Sync</Text>
+            <View style={[s.statIcon, { backgroundColor: '#FEF3C7' }]}><Text style={{ fontSize: 16 }}>🏅</Text></View>
+            <Text style={s.statNum}>{helped}</Text>
+            <Text style={s.statLabel}>Helped</Text>
           </View>
         </View>
 
-        {/* Menu */}
-        <View style={s.menuSection}>
-          <Text style={s.menuSectionTitle}>Activity</Text>
-          <TouchableOpacity style={s.menuItem} onPress={() => navigation.navigate('Home')} activeOpacity={0.6}>
-            <View style={[s.menuIconWrap, { backgroundColor: '#EEF2FF' }]}><Text style={s.menuIcon}>🗺️</Text></View>
-            <View style={s.menuContent}><Text style={s.menuLabel}>View Map</Text><Text style={s.menuDesc}>See nearby waterlogging reports</Text></View>
-            <Text style={s.menuArrow}>›</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.menuItem} onPress={() => navigation.navigate('Report')} activeOpacity={0.6}>
-            <View style={[s.menuIconWrap, { backgroundColor: '#ECFDF5' }]}><Text style={s.menuIcon}>📝</Text></View>
-            <View style={s.menuContent}><Text style={s.menuLabel}>New Report</Text><Text style={s.menuDesc}>Report a waterlogged area</Text></View>
-            <Text style={s.menuArrow}>›</Text>
-          </TouchableOpacity>
-          {(profile?.pendingReports || 0) > 0 && (
-            <TouchableOpacity style={s.menuItem} onPress={handleSync} activeOpacity={0.6}>
-              <View style={[s.menuIconWrap, { backgroundColor: '#FEF9C3' }]}><Text style={s.menuIcon}>🔄</Text></View>
-              <View style={s.menuContent}><Text style={s.menuLabel}>Sync Reports</Text><Text style={s.menuDesc}>{profile?.pendingReports} report(s) waiting</Text></View>
-              <Text style={s.menuArrow}>›</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={s.menuSection}>
-          <Text style={s.menuSectionTitle}>About</Text>
-          <View style={s.menuItem}>
-            <View style={[s.menuIconWrap, { backgroundColor: '#F5F3FF' }]}><Text style={s.menuIcon}>ℹ️</Text></View>
-            <View style={s.menuContent}><Text style={s.menuLabel}>App Version</Text><Text style={s.menuDesc}>CIVIX v1.0.0</Text></View>
+        {/* Achievements */}
+        <Text style={s.sectionTitle}>Achievements</Text>
+        <View style={s.achieveCard}>
+          <View style={[s.achieveIcon, { backgroundColor: '#FEF3C7' }]}><Text style={{ fontSize: 18 }}>🏅</Text></View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.achieveName}>Community Hero</Text>
+            <Text style={s.achieveDesc}>Submitted 20+ reports</Text>
           </View>
-          <View style={s.menuItem}>
-            <View style={[s.menuIconWrap, { backgroundColor: '#EEF2FF' }]}><Text style={s.menuIcon}>🌊</Text></View>
-            <View style={s.menuContent}><Text style={s.menuLabel}>Waterlogging Alert System</Text><Text style={s.menuDesc}>Community-driven flood reporting</Text></View>
+        </View>
+        <View style={s.achieveCard}>
+          <View style={[s.achieveIcon, { backgroundColor: '#ECFDF5' }]}><Text style={{ fontSize: 18 }}>🛡</Text></View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.achieveName}>Safety Champion</Text>
+            <Text style={s.achieveDesc}>Helped 100+ travelers</Text>
           </View>
         </View>
 
-        <TouchableOpacity style={s.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
-          <Text style={{ fontSize: 18 }}>🚪</Text>
-          <Text style={s.logoutText}>Logout</Text>
+        {/* Logout */}
+        <TouchableOpacity style={s.logoutBtn} onPress={logout} activeOpacity={0.7}>
+          <Text style={{ fontSize: 16 }}>🚪</Text>
+          <Text style={s.logoutTxt}>Logout</Text>
         </TouchableOpacity>
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -171,40 +127,33 @@ export const ProfileScreen = ({ navigation }: any) => {
 };
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scroll: { paddingHorizontal: 20, paddingTop: 8 },
+  root: { flex: 1, backgroundColor: T.bg },
+  scroll: { paddingHorizontal: 16, paddingTop: 8 },
+  back: { width: 40, height: 40, borderRadius: 20, backgroundColor: T.card, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: T.border, marginBottom: 8 },
+  title: { fontSize: 24, fontWeight: '800', color: T.text, marginBottom: 16 },
 
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
-  backIcon: { fontSize: 20, color: '#64748B' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B' },
+  userCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: T.card, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: T.border, marginBottom: 12 },
+  avatar: { width: 48, height: 48, borderRadius: 12, backgroundColor: T.primary, alignItems: 'center', justifyContent: 'center' },
+  name: { fontSize: 18, fontWeight: '700', color: T.text },
+  email: { fontSize: 13, color: T.textMuted, marginTop: 2 },
 
-  avatarCard: { alignItems: 'center', backgroundColor: '#fff', borderRadius: 20, paddingVertical: 28, paddingHorizontal: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' },
-  avatarGlow: { width: 88, height: 88, borderRadius: 44, marginBottom: 14, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#C7D2FE' },
-  avatarCircle: { width: 76, height: 76, borderRadius: 38, backgroundColor: '#6366F1', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 28, fontWeight: '800', color: '#fff' },
-  userName: { fontSize: 20, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
-  userEmail: { fontSize: 14, color: '#94A3B8', marginBottom: 12 },
-  memberBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EEF2FF', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#C7D2FE' },
-  memberDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
-  memberText: { fontSize: 12, color: '#6366F1', fontWeight: '600' },
+  trustCard: { backgroundColor: T.card, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: T.border, marginBottom: 12 },
+  trustIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center' },
+  trustBar: { height: 6, borderRadius: 3, backgroundColor: T.borderLight, overflow: 'hidden' },
+  trustFill: { height: '100%', borderRadius: 3, backgroundColor: T.green },
 
-  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
-  statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 16, paddingVertical: 20, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
-  statNumber: { fontSize: 28, fontWeight: '800', color: '#6366F1', marginBottom: 4 },
-  statLabel: { fontSize: 12, color: '#94A3B8', fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5 },
+  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  statCard: { flex: 1, backgroundColor: T.card, borderRadius: 12, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: T.border },
+  statIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  statNum: { fontSize: 24, fontWeight: '800', color: T.text },
+  statLabel: { fontSize: 12, color: T.textMuted, marginTop: 2 },
 
-  menuSection: { marginBottom: 16 },
-  menuSectionTitle: { fontSize: 11, fontWeight: '600', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10, marginLeft: 4 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 6, borderWidth: 1, borderColor: '#E2E8F0' },
-  menuIconWrap: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
-  menuIcon: { fontSize: 20 },
-  menuContent: { flex: 1 },
-  menuLabel: { fontSize: 15, fontWeight: '600', color: '#1E293B', marginBottom: 2 },
-  menuDesc: { fontSize: 12, color: '#94A3B8' },
-  menuArrow: { fontSize: 22, color: '#CBD5E1', fontWeight: '300' },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: T.text, marginBottom: 8 },
+  achieveCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: T.card, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: T.border, marginBottom: 8 },
+  achieveIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  achieveName: { fontSize: 14, fontWeight: '700', color: T.text },
+  achieveDesc: { fontSize: 12, color: T.textMuted, marginTop: 2 },
 
-  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEF2F2', borderRadius: 14, paddingVertical: 16, marginTop: 8, gap: 8, borderWidth: 1, borderColor: '#FECACA' },
-  logoutText: { fontSize: 16, fontWeight: '700', color: '#EF4444' },
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#FEF2F2', borderRadius: 12, paddingVertical: 14, marginTop: 16, borderWidth: 1, borderColor: '#FECACA' },
+  logoutTxt: { fontSize: 15, fontWeight: '700', color: T.red },
 });
