@@ -102,6 +102,19 @@ class ApiService {
   async regenerateApiSecret(id: string) {
     return this.client.post(`/admin/api-keys/${id}/regenerate`);
   }
+
+  // Weather Dashboard
+  async getWeatherStats() {
+    return this.client.get('/admin/weather/stats');
+  }
+
+  async getWeatherNotifications(params?: { page?: number; limit?: number }) {
+    return this.client.get('/admin/weather/notifications', { params });
+  }
+
+  async triggerWeatherCheck() {
+    return this.client.post('/admin/weather/trigger');
+  }
 }
 
 // eslint-disable-next-line import/no-anonymous-default-export

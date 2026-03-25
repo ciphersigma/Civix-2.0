@@ -18,6 +18,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import FeedbackManagePage from './pages/FeedbackManagePage';
 import ApiKeysPage from './pages/ApiKeysPage';
+import WeatherDashboardPage from './pages/WeatherDashboardPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 
@@ -62,6 +63,7 @@ function App() {
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="feedback" element={<FeedbackManagePage />} />
             <Route path="api-keys" element={<ApiKeysPage />} />
+            <Route path="weather" element={<WeatherDashboardPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Routes>

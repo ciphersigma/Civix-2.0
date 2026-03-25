@@ -205,6 +205,125 @@ export function createAdminRouter(pool: Pool): Router {
     }
   });
 
+  // ==================== WEATHER DASHBOARD ====================
+
+  // GET /api/v1/admin/weather/stats - Weather alert statistics
+  router.get('/weather/stats', async (_req: Request, res: Response) => {
+    try {
+      const [alertsTotal, alertsToday, usersWithFcm, usersWithAlerts, recentAlerts, responseStats, alertsByDay] = await Promise.all([
+        pool.query('SELECT COUNT(*) as count FROM weather_alerts'),
+        pool.query("SELECT COUNT(*) as count FROM weather_alerts WHERE created_at >= CURRENT_DATE"),
+        pool.query("SELECT COUNT(*) as count FROM users WHERE fcm_token IS NOT NULL"),
+        pool.query("SELECT COUNT(*) as count FROM users WHERE weather_alerts_enabled = TRUE AND fcm_token IS NOT NULL"),
+        pool.query(
+          `SELECT id, latitude, longitude, precipitation_mm, weather_code, description, users_notified, created_at
+           FROM weather_alerts ORDER BY created_at DESC LIMIT 20`
+        ),
+        pool.query(
+          `SELECT
+             COUNT(*) as total,
+             COUNT(responded_at) as responded,
+             COUNT(CASE WHEN response::text LIKE '%yes%' THEN 1 END) as confirmed_rain,
+             COUNT(CASE WHEN response::text LIKE '%no%' THEN 1 END) as denied_rain
+           FROM notifications WHERE type = 'rain_detection'`
+        ),
+        pool.query(
+          `SELECT DATE(created_at) as date, COUNT(*) as count, SUM(users_notified) as notified
+           FROM weather_alerts
+           WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+           GROUP BY DATE(created_at) ORDER BY date`
+        ),
+      ]);
+
+      const resp = responseStats.rows[0];
+      const totalNotifs = parseInt(resp.total) || 0;
+      const responded = parseInt(resp.responded) || 0;
+
+      return res.json({
+        totalAlerts: parseInt(alertsTotal.rows[0].count),
+        alertsToday: parseInt(alertsToday.rows[0].count),
+        usersWithFcm: parseInt(usersWithFcm.rows[0].count),
+        usersWithAlertsEnabled: parseInt(usersWithAlerts.rows[0].count),
+        notifications: {
+          total: totalNotifs,
+          responded,
+          responseRate: totalNotifs > 0 ? Math.round((responded / totalNotifs) * 100) : 0,
+          confirmedRain: parseInt(resp.confirmed_rain) || 0,
+          deniedRain: parseInt(resp.denied_rain) || 0,
+        },
+        recentAlerts: recentAlerts.rows,
+        alertsByDay: alertsByDay.rows,
+      });
+    } catch (error) {
+      console.error('Weather stats error:', error);
+      return res.status(500).json({ message: 'Failed to fetch weather stats' });
+    }
+  });
+
+  // GET /api/v1/admin/weather/notifications - Recent notification delivery log
+  router.get('/weather/notifications', async (req: Request, res: Response) => {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 30;
+      const offset = (page - 1) * limit;
+
+      const [notifs, total] = await Promise.all([
+        pool.query(
+          `SELECT n.id, n.user_id, u.email, u.full_name, n.title, n.body, n.sent_at, n.responded_at, n.response
+           FROM notifications n
+           LEFT JOIN users u ON n.user_id = u.id
+           WHERE n.type = 'rain_detection'
+           ORDER BY n.sent_at DESC
+           LIMIT $1 OFFSET $2`,
+          [limit, offset]
+        ),
+        pool.query("SELECT COUNT(*) as count FROM notifications WHERE type = 'rain_detection'"),
+      ]);
+
+      return res.json({
+        notifications: notifs.rows,
+        total: parseInt(total.rows[0].count),
+        page,
+        limit,
+        totalPages: Math.ceil(parseInt(total.rows[0].count) / limit),
+      });
+    } catch (error) {
+      console.error('Weather notifications error:', error);
+      return res.status(500).json({ message: 'Failed to fetch notifications' });
+    }
+  });
+
+  // POST /api/v1/admin/weather/trigger - Manually trigger weather check
+  router.post('/weather/trigger', async (_req: Request, res: Response) => {
+    try {
+      const apiUrl = process.env.WEATHER_API_URL || 'https://api.open-meteo.com/v1/forecast';
+      const weatherRes = await fetch(
+        `${apiUrl}?latitude=23.0225&longitude=72.5714&current=precipitation,rain,weather_code,temperature_2m&timezone=Asia/Kolkata`
+      );
+      const data = await weatherRes.json();
+      const current = data.current || {};
+      const precip = Math.max(current.precipitation || 0, current.rain || 0);
+      const rainCodes = [51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,99];
+      const isRaining = precip > 0.1 || rainCodes.includes(current.weather_code);
+
+      return res.json({
+        success: true,
+        weather: {
+          temperature: current.temperature_2m,
+          precipitation: current.precipitation,
+          rain: current.rain,
+          weatherCode: current.weather_code,
+          isRaining,
+          time: current.time,
+        },
+        message: isRaining ? 'Rain detected! Notifications would be sent.' : 'No rain currently detected.',
+      });
+    } catch (error) {
+      console.error('Weather trigger error:', error);
+      return res.status(500).json({ message: 'Failed to check weather' });
+    }
+  });
+
   // ==================== API KEY MANAGEMENT ====================
 
   // GET /api/v1/admin/api-keys - List all API keys
