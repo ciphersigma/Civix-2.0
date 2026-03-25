@@ -8,6 +8,7 @@ import { createReportRouter } from '../src/routes/report.routes';
 import { createAdminRouter } from '../src/routes/admin.routes';
 import { createFeedbackRouter } from '../src/routes/feedback.routes';
 import { createPartnerRouter } from '../src/routes/partner.routes';
+import { createWeatherRouter } from '../src/routes/weather.routes';
 
 dotenv.config();
 
@@ -66,5 +67,6 @@ app.use('/api/v1/reports', createReportRouter(pool));
 app.use('/api/v1/admin', createAdminRouter(pool));
 app.use('/api/v1/feedback', createFeedbackRouter(pool));
 app.use('/api/v1/partner', createPartnerRouter(pool));
+app.use('/api/v1/weather', createWeatherRouter(pool));
 
 export default app;

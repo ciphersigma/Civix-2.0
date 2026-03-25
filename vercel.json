@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/expire-reports",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/weather-check",
+      "schedule": "0 6 * * *"
     }
   ],
   "builds": [
@@ -14,12 +18,20 @@
     {
       "src": "api/cron/expire-reports.ts",
       "use": "@vercel/node"
+    },
+    {
+      "src": "api/cron/weather-check.ts",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/cron/expire-reports",
       "dest": "api/cron/expire-reports.ts"
+    },
+    {
+      "src": "/api/cron/weather-check",
+      "dest": "api/cron/weather-check.ts"
     },
     {
       "src": "/(.*)",

@@ -9,6 +9,7 @@ import Geolocation from 'react-native-geolocation-service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ReportService } from '../services/ReportService';
 import { AuthService } from '../services/AuthService';
+import { WeatherService } from '../services/WeatherService';
 
 const MAPBOX_TOKEN =
   'pk.eyJ1IjoiYWxwaGFpbn' + 'N0aW54IiwiYSI6ImNta3A2N3M' + '2dDBldjEzZXFyeTJzeGRhdzMifQ.C7b81YKX5_cWuVFJNOMkoA';
@@ -68,12 +69,24 @@ export const HomeScreen = ({ navigation }: any) => {
   const [searchResults, setSearchResults] = useState<GeoResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [weather, setWeather] = useState<any>(null);
+  const [weatherAlert, setWeatherAlert] = useState<{ title: string; body: string; data: any } | null>(null);
   const searchTimer = useRef<any>(null);
   const cameraRef = useRef<MapboxGL.Camera>(null);
   const cardAnim = useRef(new Animated.Value(0)).current;
   const statusBarH = Math.max(insets.top, Platform.OS === 'android' ? 40 : 0);
 
   useEffect(() => { init(); }, []);
+
+  // Listen for foreground push notifications
+  useEffect(() => {
+    const unsubscribe = WeatherService.setupForegroundHandler((title, body, data) => {
+      setWeatherAlert({ title, body, data });
+      // Auto-dismiss after 8 seconds
+      setTimeout(() => setWeatherAlert(null), 8000);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     Animated.spring(cardAnim, { toValue: selectedReport ? 1 : 0, useNativeDriver: true, tension: 50, friction: 9 }).start();
@@ -92,6 +105,13 @@ export const HomeScreen = ({ navigation }: any) => {
     setPendingCount(await ReportService.getPendingCount());
     const ok = await requestLocationPermission();
     ok ? getCurrentLocation() : loadReports();
+
+    // Register for push notifications and update location for weather alerts
+    if (!offline) {
+      WeatherService.registerForPushNotifications().catch(() => {});
+      WeatherService.updateLocation().catch(() => {});
+      WeatherService.getCurrentWeather().then(w => { if (w) setWeather(w); }).catch(() => {});
+    }
   };
 
   const getCurrentLocation = () => {
@@ -223,6 +243,38 @@ export const HomeScreen = ({ navigation }: any) => {
         </View>
       )}
 
+      {/* Weather alert notification banner */}
+      {weatherAlert && (
+        <View style={[st.weatherAlertBanner, { top: statusBarH + 68 }]}>
+          <Text style={{ fontSize: 16, marginRight: 8 }}>🌧️</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={st.weatherAlertTitle}>{weatherAlert.title}</Text>
+            <Text style={st.weatherAlertBody} numberOfLines={2}>{weatherAlert.body}</Text>
+          </View>
+          <TouchableOpacity onPress={() => setWeatherAlert(null)} style={{ padding: 4 }}>
+            <Text style={{ fontSize: 14, color: '#1E40AF' }}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Weather chip */}
+      {weather && !weatherAlert && (
+        <TouchableOpacity
+          style={[st.weatherChip, { top: statusBarH + 68 }, weather.isRaining && st.weatherChipRain]}
+          activeOpacity={0.8}
+          onPress={() => {
+            Alert.alert(
+              weather.isRaining ? '🌧️ Raining' : '☀️ Clear',
+              `Temperature: ${weather.temperature}°C\nHumidity: ${weather.humidity}%\nWind: ${weather.windSpeed} km/h\nPrecipitation: ${weather.precipitation} mm`,
+            );
+          }}>
+          <Text style={{ fontSize: 14 }}>{weather.isRaining ? '🌧️' : '☀️'}</Text>
+          <Text style={[st.weatherChipText, weather.isRaining && { color: '#1E40AF' }]}>
+            {weather.temperature ? `${Math.round(weather.temperature)}°` : '--'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* Side buttons */}
       <View style={st.sideButtons}>
         <TouchableOpacity style={st.circleBtn} onPress={goToMyLocation} activeOpacity={0.7}><Text style={st.circleBtnIcon}>◎</Text></TouchableOpacity>
@@ -322,4 +374,12 @@ const st = StyleSheet.create({
   fabRow: { position: 'absolute', bottom: 28, left: 16, right: 16, flexDirection: 'row', gap: 10 },
   navBtn: { height: 52, borderRadius: 26, backgroundColor: C.card, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 20, elevation: 5, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6 },
   navBtnText: { fontSize: 14, color: C.text, fontWeight: '700' },
+
+  // Weather
+  weatherChip: { position: 'absolute', left: 14, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.card, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, elevation: 3, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4 },
+  weatherChipRain: { backgroundColor: '#DBEAFE', borderColor: '#93C5FD' },
+  weatherChipText: { fontSize: 14, fontWeight: '700', color: C.text },
+  weatherAlertBanner: { position: 'absolute', left: 14, right: 14, flexDirection: 'row', alignItems: 'center', backgroundColor: '#DBEAFE', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, elevation: 5, borderWidth: 1, borderColor: '#93C5FD', zIndex: 200 },
+  weatherAlertTitle: { fontSize: 14, fontWeight: '700', color: '#1E3A8A' },
+  weatherAlertBody: { fontSize: 12, color: '#1E40AF', marginTop: 2 },
 });
