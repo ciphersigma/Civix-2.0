@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ReportService } from '../services/ReportService';
 import { AuthService } from '../services/AuthService';
 import { WeatherService } from '../services/WeatherService';
+import { api } from '../services/api';
 
 const MAPBOX_TOKEN =
   'pk.eyJ1IjoiYWxwaGFpbn' + 'N0aW54IiwiYSI6ImNta3A2N3M' + '2dDBldjEzZXFyeTJzeGRhdzMifQ.C7b81YKX5_cWuVFJNOMkoA';
@@ -307,6 +308,38 @@ export const HomeScreen = ({ navigation }: any) => {
             <Text style={[st.cardDesc, { fontStyle: 'italic', color: C.textMuted }]}>No description available</Text>
           )}
           <Text style={st.cardCoords}>{Number(selectedReport.latitude).toFixed(4)}, {Number(selectedReport.longitude).toFixed(4)}</Text>
+          {/* Community verification */}
+          <View style={st.voteRow}>
+            <TouchableOpacity
+              style={[st.voteBtn, st.voteBtnUp]}
+              onPress={async () => {
+                try {
+                  const res = await api.post(`/reports/${selectedReport.id}/vote`, { vote: 1 });
+                  setSelectedReport({ ...selectedReport, upvotes: res.data.upvotes, downvotes: res.data.downvotes, trust_score: res.data.trustScore });
+                } catch { Alert.alert('Error', 'Could not vote'); }
+              }}
+              activeOpacity={0.7}>
+              <Text style={{ fontSize: 13 }}>👍</Text>
+              <Text style={st.voteCount}>{selectedReport.upvotes || 0}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[st.voteBtn, st.voteBtnDown]}
+              onPress={async () => {
+                try {
+                  const res = await api.post(`/reports/${selectedReport.id}/vote`, { vote: -1 });
+                  setSelectedReport({ ...selectedReport, upvotes: res.data.upvotes, downvotes: res.data.downvotes, trust_score: res.data.trustScore });
+                } catch { Alert.alert('Error', 'Could not vote'); }
+              }}
+              activeOpacity={0.7}>
+              <Text style={{ fontSize: 13 }}>👎</Text>
+              <Text style={st.voteCountDown}>{selectedReport.downvotes || 0}</Text>
+            </TouchableOpacity>
+            {(selectedReport.upvotes > 0 || selectedReport.downvotes > 0) && (
+              <Text style={st.trustLabel}>
+                {Math.round((selectedReport.trust_score || 0.5) * 100)}% trust
+              </Text>
+            )}
+          </View>
         </Animated.View>
       )}
 
@@ -382,4 +415,13 @@ const st = StyleSheet.create({
   weatherAlertBanner: { position: 'absolute', left: 14, right: 14, flexDirection: 'row', alignItems: 'center', backgroundColor: '#DBEAFE', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, elevation: 5, borderWidth: 1, borderColor: '#93C5FD', zIndex: 200 },
   weatherAlertTitle: { fontSize: 14, fontWeight: '700', color: '#1E3A8A' },
   weatherAlertBody: { fontSize: 12, color: '#1E40AF', marginTop: 2 },
+
+  // Voting
+  voteRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.borderLight },
+  voteBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
+  voteBtnUp: { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' },
+  voteBtnDown: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
+  voteCount: { fontSize: 13, fontWeight: '700', color: C.green },
+  voteCountDown: { fontSize: 13, fontWeight: '700', color: C.red },
+  trustLabel: { flex: 1, textAlign: 'right', fontSize: 11, fontWeight: '600', color: C.textMuted },
 });

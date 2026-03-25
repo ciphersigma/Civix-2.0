@@ -24,7 +24,8 @@ const SCHEMA_FILES = [
   '05_firebase_uid.sql',
   '06_feedback.sql',
   '07_api_keys.sql',
-  '08_weather_alerts.sql'
+  '08_weather_alerts.sql',
+  '09_report_votes.sql'
 ];
 
 async function runMigration() {

@@ -119,7 +119,7 @@ export function createReportRouter(pool: Pool): Router {
 
       const result = await pool.query(
         `SELECT id, ST_Y(location::geometry) as latitude, ST_X(location::geometry) as longitude,
-                severity, report_type, created_at
+                severity, report_type, created_at, upvotes, downvotes, trust_score
          FROM waterlogging_reports
          WHERE is_active = true AND created_at > NOW() - INTERVAL '4 hours'
          ORDER BY created_at DESC
@@ -358,6 +358,94 @@ export function createReportRouter(pool: Pool): Router {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to retrieve area reports'
       });
+    }
+  });
+
+  /**
+   * POST /api/v1/reports/:id/vote
+   * Upvote or downvote a report (community verification)
+   * Body: { vote: 1 } to confirm, { vote: -1 } to deny
+   */
+  router.post('/:id/vote', authMiddleware, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.userId;
+      const { id } = req.params;
+      const { vote } = req.body;
+
+      if (!userId) return res.status(401).json({ success: false, message: 'Not authenticated' });
+      if (vote !== 1 && vote !== -1) return res.status(400).json({ success: false, message: 'vote must be 1 (confirm) or -1 (deny)' });
+
+      // Upsert vote (update if already voted)
+      await pool.query(
+        `INSERT INTO report_votes (report_id, user_id, vote)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (report_id, user_id) DO UPDATE SET vote = $3, created_at = NOW()`,
+        [id, userId, vote]
+      );
+
+      // Recount votes and update trust score
+      const counts = await pool.query(
+        `SELECT
+           COALESCE(SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END), 0) as up,
+           COALESCE(SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END), 0) as down
+         FROM report_votes WHERE report_id = $1`,
+        [id]
+      );
+      const up = parseInt(counts.rows[0].up);
+      const down = parseInt(counts.rows[0].down);
+      const total = up + down;
+      const trust = total > 0 ? Math.round((up / total) * 100) / 100 : 0.50;
+
+      await pool.query(
+        `UPDATE waterlogging_reports SET upvotes = $1, downvotes = $2, trust_score = $3 WHERE id = $4`,
+        [up, down, trust, id]
+      );
+
+      return res.json({ success: true, upvotes: up, downvotes: down, trustScore: trust, userVote: vote });
+    } catch (error) {
+      console.error('Vote error:', error);
+      return res.status(500).json({ success: false, message: 'Failed to vote' });
+    }
+  });
+
+  /**
+   * GET /api/v1/reports/:id/votes
+   * Get vote counts and user's own vote for a report
+   */
+  router.get('/:id/votes', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      // Try to get user's vote if authenticated
+      let userVote = 0;
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        try {
+          const jwt = require('jsonwebtoken');
+          const decoded: any = jwt.verify(authHeader.substring(7), process.env.JWT_SECRET || 'dev-secret-key-change-in-production');
+          if (decoded?.userId) {
+            const uv = await pool.query('SELECT vote FROM report_votes WHERE report_id = $1 AND user_id = $2', [id, decoded.userId]);
+            if (uv.rows.length > 0) userVote = uv.rows[0].vote;
+          }
+        } catch {}
+      }
+
+      const result = await pool.query(
+        'SELECT upvotes, downvotes, trust_score FROM waterlogging_reports WHERE id = $1',
+        [id]
+      );
+      if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Report not found' });
+
+      const r = result.rows[0];
+      return res.json({
+        success: true,
+        upvotes: r.upvotes || 0,
+        downvotes: r.downvotes || 0,
+        trustScore: parseFloat(r.trust_score) || 0.5,
+        userVote,
+      });
+    } catch (error) {
+      console.error('Get votes error:', error);
+      return res.status(500).json({ success: false, message: 'Failed to get votes' });
     }
   });
 
