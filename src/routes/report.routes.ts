@@ -272,6 +272,79 @@ export function createReportRouter(pool: Pool): Router {
   });
 
   /**
+   * GET /api/v1/reports/heatmap/timeline
+   * Historical heatmap data grouped by day for timelapse visualization
+   * Query: days (default 30)
+   */
+  router.get('/heatmap/timeline', async (req: Request, res: Response) => {
+    try {
+      const days = Math.min(parseInt(req.query.days as string) || 30, 90);
+      const grid = 0.005;
+
+      const result = await pool.query(
+        `SELECT
+           DATE(created_at) as date,
+           ROUND(ST_Y(location::geometry) / $1) * $1 as lat,
+           ROUND(ST_X(location::geometry) / $1) * $1 as lng,
+           COUNT(*) as count,
+           MAX(severity) as max_severity
+         FROM waterlogging_reports
+         WHERE created_at > NOW() - ($2 || ' days')::INTERVAL
+         GROUP BY DATE(created_at), ROUND(ST_Y(location::geometry) / $1), ROUND(ST_X(location::geometry) / $1)
+         ORDER BY date`,
+        [grid, days]
+      );
+
+      // Group by date
+      const byDate: Record<string, any[]> = {};
+      result.rows.forEach((r: any) => {
+        const d = new Date(r.date).toISOString().split('T')[0];
+        if (!byDate[d]) byDate[d] = [];
+        byDate[d].push({
+          latitude: parseFloat(r.lat),
+          longitude: parseFloat(r.lng),
+          count: parseInt(r.count),
+          maxSeverity: r.max_severity,
+        });
+      });
+
+      // Build cumulative frames — each day includes all previous days
+      const dates = Object.keys(byDate).sort();
+      const frames: any[] = [];
+      const cumulative: Record<string, any> = {};
+
+      dates.forEach(date => {
+        byDate[date].forEach(pt => {
+          const key = `${pt.latitude},${pt.longitude}`;
+          if (!cumulative[key]) cumulative[key] = { ...pt };
+          else cumulative[key].count += pt.count;
+        });
+
+        const points = Object.values(cumulative);
+        const maxCount = Math.max(...points.map((p: any) => p.count), 1);
+
+        frames.push({
+          date,
+          reportCount: byDate[date].length,
+          points: points.map((p: any) => ({
+            ...p,
+            intensity: p.count / maxCount,
+          })),
+        });
+      });
+
+      return res.json({
+        success: true,
+        frames,
+        meta: { days, totalDates: dates.length },
+      });
+    } catch (error) {
+      console.error('Heatmap timeline error:', error);
+      return res.status(500).json({ success: false, message: 'Failed to generate timeline' });
+    }
+  });
+
+  /**
    * GET /api/v1/reports/heatmap
    * Historical heatmap data — aggregated report density for flood-prone zones
    * Returns clusters of lat/lng with intensity based on report count

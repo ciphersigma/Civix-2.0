@@ -14,6 +14,12 @@ const PublicMapPage: React.FC = () => {
   const [reports, setReports] = useState<any[]>([]);
   const [mapStyle, setMapStyle] = useState('light-v11');
   const [isDark, setIsDark] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [timelineFrames, setTimelineFrames] = useState<any[]>([]);
+  const [timelineIdx, setTimelineIdx] = useState(0);
+  const [timelinePlaying, setTimelinePlaying] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
+  const playTimer = useRef<any>(null);
   const circleIds = useRef<string[]>([]);
   const circleCounter = useRef(0);
 
@@ -120,7 +126,7 @@ const PublicMapPage: React.FC = () => {
     if (!map.current) return;
     setMapStyle(style);
     map.current.setStyle(`mapbox://styles/mapbox/${style}`);
-    map.current.once('style.load', () => renderCircles(reports));
+    map.current.once('style.load', () => { renderCircles(reports); if (showHeatmap) loadHeatmapLayer(); });
   };
 
   const toggleTheme = () => {
@@ -128,6 +134,104 @@ const PublicMapPage: React.FC = () => {
     const newStyle = !isDark ? 'dark-v11' : 'light-v11';
     switchStyle(newStyle);
   };
+
+  const loadHeatmapLayer = async () => {
+    if (!map.current) return;
+    try {
+      const res = await ApiService.getHeatmap(90);
+      const pts = res.data.heatmap || [];
+      if (!pts.length) return;
+      if (map.current.getLayer('heatmap-layer')) map.current.removeLayer('heatmap-layer');
+      if (map.current.getSource('heatmap-src')) map.current.removeSource('heatmap-src');
+      map.current.addSource('heatmap-src', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: pts.map((p: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.longitude, p.latitude] }, properties: { intensity: p.intensity } })) },
+      });
+      map.current.addLayer({
+        id: 'heatmap-layer', type: 'heatmap', source: 'heatmap-src',
+        paint: {
+          'heatmap-weight': ['get', 'intensity'],
+          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 10, 1, 15, 3],
+          'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], 0, 'rgba(0,0,0,0)', 0.2, 'rgba(99,102,241,0.3)', 0.4, 'rgba(234,179,8,0.5)', 0.6, 'rgba(249,115,22,0.6)', 0.8, 'rgba(239,68,68,0.7)', 1, 'rgba(239,68,68,0.9)'],
+          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 15, 15, 30],
+          'heatmap-opacity': 0.7,
+        },
+      });
+    } catch (e) { console.error('Heatmap error:', e); }
+  };
+
+  const toggleHeatmap = () => {
+    if (!map.current) return;
+    if (showHeatmap) {
+      if (map.current.getLayer('heatmap-layer')) map.current.removeLayer('heatmap-layer');
+      if (map.current.getSource('heatmap-src')) map.current.removeSource('heatmap-src');
+      setShowHeatmap(false);
+    } else {
+      setShowHeatmap(true);
+      loadHeatmapLayer();
+    }
+  };
+
+  // Timeline functions
+  const loadTimeline = async () => {
+    if (!map.current) return;
+    try {
+      const res = await ApiService.getHeatmapTimeline(30);
+      const frames = res.data.frames || [];
+      setTimelineFrames(frames);
+      setTimelineIdx(0);
+      setShowTimeline(true);
+      if (frames.length > 0) renderTimelineFrame(frames[0]);
+    } catch (e) { console.error('Timeline error:', e); }
+  };
+
+  const renderTimelineFrame = (frame: any) => {
+    if (!map.current || !frame) return;
+    const points = frame.points || [];
+    const geojson: any = {
+      type: 'FeatureCollection',
+      features: points.map((p: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.longitude, p.latitude] }, properties: { intensity: p.intensity } })),
+    };
+    if (map.current.getSource('timeline-src')) {
+      (map.current.getSource('timeline-src') as mapboxgl.GeoJSONSource).setData(geojson);
+    } else {
+      map.current.addSource('timeline-src', { type: 'geojson', data: geojson });
+      map.current.addLayer({
+        id: 'timeline-layer', type: 'heatmap', source: 'timeline-src',
+        paint: {
+          'heatmap-weight': ['get', 'intensity'],
+          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 10, 1, 15, 3],
+          'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], 0, 'rgba(0,0,0,0)', 0.2, 'rgba(99,102,241,0.3)', 0.4, 'rgba(234,179,8,0.5)', 0.6, 'rgba(249,115,22,0.6)', 0.8, 'rgba(239,68,68,0.7)', 1, 'rgba(239,68,68,0.9)'],
+          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 15, 15, 30],
+          'heatmap-opacity': 0.75,
+        },
+      });
+    }
+  };
+
+  const playTimeline = () => {
+    if (timelineFrames.length === 0) return;
+    setTimelinePlaying(true);
+    let idx = timelineIdx;
+    playTimer.current = setInterval(() => {
+      idx = (idx + 1) % timelineFrames.length;
+      setTimelineIdx(idx);
+      renderTimelineFrame(timelineFrames[idx]);
+      if (idx === timelineFrames.length - 1) { clearInterval(playTimer.current); setTimelinePlaying(false); }
+    }, 800);
+  };
+
+  const pauseTimeline = () => { if (playTimer.current) clearInterval(playTimer.current); setTimelinePlaying(false); };
+
+  const closeTimeline = () => {
+    pauseTimeline(); setShowTimeline(false); setTimelineFrames([]);
+    if (map.current) {
+      if (map.current.getLayer('timeline-layer')) map.current.removeLayer('timeline-layer');
+      if (map.current.getSource('timeline-src')) map.current.removeSource('timeline-src');
+    }
+  };
+
+  const scrubTimeline = (idx: number) => { setTimelineIdx(idx); if (timelineFrames[idx]) renderTimelineFrame(timelineFrames[idx]); };
 
   const severityCounts = {
     High: reports.filter(r => r.severity === 'High').length,
@@ -177,16 +281,49 @@ const PublicMapPage: React.FC = () => {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
             )}
           </button>
+          <button className={`pm-theme-btn ${showHeatmap ? 'active' : ''}`} onClick={toggleHeatmap} title="Toggle flood heatmap">
+            🔥
+          </button>
+          <button className={`pm-theme-btn ${showTimeline ? 'active' : ''}`} onClick={showTimeline ? closeTimeline : loadTimeline} title="Flood timeline">
+            ⏱
+          </button>
         </div>
       </header>
 
       {/* Map */}
-      <div className="pm-map-wrap">
+      <div className="pm-map-wrap" style={{ position: 'relative' }}>
         {MAPBOX_TOKEN ? (
           <div ref={mapContainer} className="pm-map" />
         ) : (
           <div className="pm-no-token">
             <p>Map unavailable — Mapbox token not configured</p>
+          </div>
+        )}
+
+        {/* Timeline player overlay */}
+        {showTimeline && timelineFrames.length > 0 && (
+          <div style={{
+            position: 'absolute', bottom: 16, left: 16, right: 16,
+            background: 'rgba(15,23,42,0.9)', backdropFilter: 'blur(8px)',
+            borderRadius: 14, padding: '14px 20px',
+            display: 'flex', alignItems: 'center', gap: 14, zIndex: 10,
+          }}>
+            <button onClick={timelinePlaying ? pauseTimeline : playTimeline}
+              style={{ width: 36, height: 36, borderRadius: 18, border: 'none', background: '#6366f1', color: '#fff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {timelinePlaying ? '⏸' : '▶'}
+            </button>
+            <div style={{ minWidth: 80, flexShrink: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#F1F5F9' }}>
+                {timelineFrames[timelineIdx]?.date ? new Date(timelineFrames[timelineIdx].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748B' }}>{timelineFrames[timelineIdx]?.reportCount || 0} reports</div>
+            </div>
+            <input type="range" min={0} max={timelineFrames.length - 1} value={timelineIdx}
+              onChange={e => scrubTimeline(parseInt(e.target.value))}
+              style={{ flex: 1, accentColor: '#6366f1', cursor: 'pointer' }} />
+            <span style={{ fontSize: 12, color: '#64748B', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+              {timelineIdx + 1}/{timelineFrames.length}
+            </span>
           </div>
         )}
       </div>

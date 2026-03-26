@@ -62,6 +62,10 @@ class ApiService {
     return this.client.get('/reports/heatmap', { params: { days } });
   }
 
+  async getHeatmapTimeline(days: number = 30) {
+    return this.client.get('/reports/heatmap/timeline', { params: { days } });
+  }
+
   async updateUser(id: string, data: { full_name?: string; email?: string; phone_number?: string; phone_verified?: boolean; language?: string }) {
     return this.client.put(`/admin/users/${id}`, data);
   }
