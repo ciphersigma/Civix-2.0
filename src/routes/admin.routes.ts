@@ -113,7 +113,7 @@ export function createAdminRouter(pool: Pool): Router {
       const status = req.query.status as string;
       const offset = (page - 1) * limit;
 
-      let query = `SELECT id, user_id, ST_Y(location::geometry) as latitude, ST_X(location::geometry) as longitude, severity, report_type, is_active, created_at, expires_at FROM waterlogging_reports`;
+      let query = `SELECT id, user_id, ST_Y(location::geometry) as latitude, ST_X(location::geometry) as longitude, severity, report_type, is_active, created_at, expires_at, photo FROM waterlogging_reports`;
       let countQuery = `SELECT COUNT(*) as count FROM waterlogging_reports`;
       const conditions: string[] = [];
       const params: any[] = [];

@@ -58,6 +58,11 @@ export function createReportRouter(pool: Pool): Router {
       }
 
       // Create report
+      const photoData = req.body.photo || null;
+      if (photoData && photoData.length > 500000) {
+        return res.status(400).json({ success: false, message: 'Photo too large. Max 500KB.' });
+      }
+
       const result = await reportService.createReport({
         userId,
         location: {
@@ -67,7 +72,7 @@ export function createReportRouter(pool: Pool): Router {
         },
         severity,
         reportType: reportType || 'waterlogged',
-        photo: req.body.photo || null,
+        photo: photoData,
       });
 
       if (!result.success) {
