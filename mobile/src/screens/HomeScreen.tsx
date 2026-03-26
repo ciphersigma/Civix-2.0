@@ -64,6 +64,8 @@ export const HomeScreen = ({ navigation }: any) => {
   const [showRes, setShowRes] = useState(false);
   const [weather, setWeather] = useState<any>(null);
   const [wAlert, setWAlert] = useState<any>(null);
+  const [heatmapData, setHeatmapData] = useState<any>(null);
+  const [showHeatmap, setShowHeatmap] = useState(false);
   const timer = useRef<any>(null);
   const cam = useRef<MapboxGL.Camera>(null);
   const anim = useRef(new Animated.Value(0)).current;
@@ -92,6 +94,7 @@ export const HomeScreen = ({ navigation }: any) => {
       WeatherService.registerForPushNotifications().catch(() => {});
       WeatherService.updateLocation().catch(() => {});
       WeatherService.getCurrentWeather().then(w => { if (w) setWeather(w); }).catch(() => {});
+      api.get('/reports/heatmap', { params: { days: 90 } }).then(r => { if (r.data?.heatmap) setHeatmapData(r.data.heatmap); }).catch(() => {});
     }
   };
   const getLoc = () => {
@@ -141,6 +144,34 @@ export const HomeScreen = ({ navigation }: any) => {
             <View style={st.dot}><View style={st.dotIn} /></View>
           </MapboxGL.PointAnnotation>
         )}
+        {/* Heatmap layer — historical flood zones */}
+        {showHeatmap && heatmapData && heatmapData.length > 0 && (
+          <MapboxGL.ShapeSource id="heatmap-src" shape={{
+            type: 'FeatureCollection',
+            features: heatmapData.map((h: any, i: number) => ({
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [h.longitude, h.latitude] },
+              properties: { intensity: h.intensity, count: h.count },
+            })),
+          }}>
+            <MapboxGL.HeatmapLayer id="heatmap-layer" style={{
+              heatmapWeight: ['get', 'intensity'],
+              heatmapIntensity: ['interpolate', ['linear'], ['zoom'], 10, 1, 15, 3],
+              heatmapColor: [
+                'interpolate', ['linear'], ['heatmap-density'],
+                0, 'rgba(0,0,0,0)',
+                0.2, 'rgba(99,102,241,0.3)',
+                0.4, 'rgba(234,179,8,0.5)',
+                0.6, 'rgba(249,115,22,0.6)',
+                0.8, 'rgba(239,68,68,0.7)',
+                1, 'rgba(239,68,68,0.9)',
+              ],
+              heatmapRadius: ['interpolate', ['linear'], ['zoom'], 10, 15, 15, 25],
+              heatmapOpacity: 0.7,
+            }} />
+          </MapboxGL.ShapeSource>
+        )}
+
         {reports.filter(r => r.latitude != null && r.longitude != null && !isNaN(Number(r.latitude)) && !isNaN(Number(r.longitude))).map(r => (
           <MapboxGL.PointAnnotation key={r.id} id={`r-${r.id}`} coordinate={[Number(r.longitude), Number(r.latitude)]} onSelected={() => setSel(r)}>
             <View style={[st.pin, { backgroundColor: SEV[r.severity] || T.yellow }]}><Text style={{ fontSize: 12 }}>💧</Text></View>
@@ -204,6 +235,9 @@ export const HomeScreen = ({ navigation }: any) => {
       <View style={st.rightCtrls}>
         <TouchableOpacity style={[st.ctrlBtn, { backgroundColor: c.card }]} onPress={recenter} activeOpacity={0.7}><Icon name="crosshairs-gps" size={20} color={c.textSec} /></TouchableOpacity>
         <TouchableOpacity style={[st.ctrlBtn, { backgroundColor: c.card }]} onPress={() => loadReps()} activeOpacity={0.7}><Icon name="refresh" size={20} color={c.textSec} /></TouchableOpacity>
+        <TouchableOpacity style={[st.ctrlBtn, showHeatmap ? { backgroundColor: T.primary } : { backgroundColor: c.card }]} onPress={() => setShowHeatmap(!showHeatmap)} activeOpacity={0.7}>
+          <Icon name="fire" size={20} color={showHeatmap ? '#fff' : c.textSec} />
+        </TouchableOpacity>
       </View>
 
       {/* ── FAB (center) ── */}

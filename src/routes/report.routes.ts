@@ -272,6 +272,53 @@ export function createReportRouter(pool: Pool): Router {
   });
 
   /**
+   * GET /api/v1/reports/heatmap
+   * Historical heatmap data — aggregated report density for flood-prone zones
+   * Returns clusters of lat/lng with intensity based on report count
+   * Query: days (default 90), gridSize (default 0.005 ~500m)
+   */
+  router.get('/heatmap', async (req: Request, res: Response) => {
+    try {
+      const days = Math.min(parseInt(req.query.days as string) || 90, 365);
+      const grid = parseFloat(req.query.gridSize as string) || 0.005;
+
+      const result = await pool.query(
+        `SELECT
+           ROUND(ST_Y(location::geometry) / $1) * $1 as lat,
+           ROUND(ST_X(location::geometry) / $1) * $1 as lng,
+           COUNT(*) as count,
+           MAX(severity) as max_severity,
+           MAX(created_at) as last_report
+         FROM waterlogging_reports
+         WHERE created_at > NOW() - ($2 || ' days')::INTERVAL
+         GROUP BY ROUND(ST_Y(location::geometry) / $1), ROUND(ST_X(location::geometry) / $1)
+         HAVING COUNT(*) >= 1
+         ORDER BY count DESC
+         LIMIT 500`,
+        [grid, days]
+      );
+
+      const maxCount = Math.max(...result.rows.map((r: any) => parseInt(r.count)), 1);
+
+      return res.json({
+        success: true,
+        heatmap: result.rows.map((r: any) => ({
+          latitude: parseFloat(r.lat),
+          longitude: parseFloat(r.lng),
+          count: parseInt(r.count),
+          intensity: parseInt(r.count) / maxCount,
+          maxSeverity: r.max_severity,
+          lastReport: r.last_report,
+        })),
+        meta: { days, gridSize: grid, totalZones: result.rows.length },
+      });
+    } catch (error) {
+      console.error('Heatmap error:', error);
+      return res.status(500).json({ success: false, message: 'Failed to generate heatmap' });
+    }
+  });
+
+  /**
    * GET /api/v1/reports/area
    * Get aggregated reports for a specific area
    * Query parameters: lat, lng, radius (optional, defaults to 500m)
