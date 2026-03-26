@@ -12,6 +12,7 @@ interface CreateReportParams {
   location: Location;
   severity: 'Low' | 'Medium' | 'High';
   reportType?: 'waterlogged' | 'clear';
+  photo?: string | null;
 }
 
 interface Report {
@@ -56,7 +57,7 @@ export class ReportService {
    * Validates GPS accuracy, daily report limit, and stores report with PostGIS geography
    */
   async createReport(params: CreateReportParams): Promise<CreateReportResult> {
-    const { userId, location, severity, reportType = 'waterlogged' } = params;
+    const { userId, location, severity, reportType = 'waterlogged', photo } = params;
 
     try {
       // Validate GPS accuracy (relaxed to 200 meters for better usability)
@@ -88,8 +89,8 @@ export class ReportService {
       // ST_SetSRID creates a geography point with SRID 4326 (WGS84)
       const result = await this.pool.query(
         `INSERT INTO waterlogging_reports 
-         (user_id, location, location_accuracy, severity, report_type)
-         VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography, $4, $5, $6)
+         (user_id, location, location_accuracy, severity, report_type, photo)
+         VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography, $4, $5, $6, $7)
          RETURNING 
            id,
            user_id,
@@ -98,10 +99,11 @@ export class ReportService {
            location_accuracy,
            severity,
            report_type,
+           photo,
            created_at,
            expires_at,
            is_active`,
-        [userId, location.longitude, location.latitude, location.accuracy, severity, reportType]
+        [userId, location.longitude, location.latitude, location.accuracy, severity, reportType, photo || null]
       );
 
       // Increment user's daily report count

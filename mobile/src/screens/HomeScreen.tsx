@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, StyleSheet, Alert, Text, TouchableOpacity, ActivityIndicator,
-  TextInput, Keyboard, StatusBar, Animated, FlatList, ScrollView,
+  TextInput, Keyboard, StatusBar, Animated, FlatList, ScrollView, Image,
   PermissionsAndroid, Platform,
 } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
@@ -308,6 +308,9 @@ export const HomeScreen = ({ navigation }: any) => {
                     {dist !== null && <Text style={{ fontSize: 12, color: c.textSec }}>{dist < 1000 ? Math.round(dist) + 'm away' : (dist / 1000).toFixed(1) + 'km away'}</Text>}
                     {r.report_type && <Text style={{ fontSize: 12, color: c.textMuted, textTransform: 'capitalize' }}>{r.report_type}</Text>}
                   </View>
+                  {r.photo && (
+                    <Image source={{ uri: `data:image/jpeg;base64,${r.photo}` }} style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }} resizeMode="cover" />
+                  )}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <TouchableOpacity style={[st.voteBtn, { backgroundColor: '#F0FDF4' }]}
                       onPress={async () => { try { await api.post(`/reports/${r.id}/vote`, { vote: 1 }); loadReps(); } catch {} }}>
@@ -341,6 +344,9 @@ export const HomeScreen = ({ navigation }: any) => {
           </View>
           {sel.report_type && <Text style={{ fontSize: 12, color: c.textMuted, textTransform: 'capitalize', marginBottom: 4 }}>{sel.report_type}</Text>}
           <Text style={{ fontSize: 11, color: c.textMuted, fontFamily: 'monospace' }}>{Number(sel.latitude).toFixed(4)}, {Number(sel.longitude).toFixed(4)}</Text>
+          {sel.photo && (
+            <Image source={{ uri: `data:image/jpeg;base64,${sel.photo}` }} style={{ width: '100%', height: 140, borderRadius: 10, marginTop: 10 }} resizeMode="cover" />
+          )}
           <View style={st.voteRow}>
             <TouchableOpacity style={[st.voteBtn, { backgroundColor: '#F0FDF4' }]}
               onPress={async () => { try { const r = await api.post(`/reports/${sel.id}/vote`, { vote: 1 }); setSel({ ...sel, upvotes: r.data.upvotes, downvotes: r.data.downvotes, trust_score: r.data.trustScore }); } catch { Alert.alert('Error', 'Could not vote'); } }}>

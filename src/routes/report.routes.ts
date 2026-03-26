@@ -66,7 +66,8 @@ export function createReportRouter(pool: Pool): Router {
           accuracy: parseFloat(location.accuracy)
         },
         severity,
-        reportType: reportType || 'waterlogged'
+        reportType: reportType || 'waterlogged',
+        photo: req.body.photo || null,
       });
 
       if (!result.success) {
@@ -119,7 +120,7 @@ export function createReportRouter(pool: Pool): Router {
 
       const result = await pool.query(
         `SELECT id, ST_Y(location::geometry) as latitude, ST_X(location::geometry) as longitude,
-                severity, report_type, created_at, upvotes, downvotes, trust_score
+                severity, report_type, created_at, upvotes, downvotes, trust_score, photo
          FROM waterlogging_reports
          WHERE is_active = true AND created_at > NOW() - INTERVAL '4 hours'
          ORDER BY created_at DESC

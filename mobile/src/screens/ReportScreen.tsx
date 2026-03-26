@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform,
-  StatusBar,
+  StatusBar, Image,
 } from 'react-native';
 import { ReportService } from '../services/ReportService';
 import { AuthService } from '../services/AuthService';
@@ -12,6 +12,7 @@ import { Theme } from '../components/ui';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLang } from '../contexts/LanguageContext';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 
 const SEV = [
   { key: 'Low', icon: 'water-outline', label: 'low', desc: 'anklDeep', color: Theme.green },
@@ -25,6 +26,7 @@ export const ReportScreen = ({ navigation, route }: any) => {
   const [severity, setSeverity] = useState('Medium');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const [photo, setPhoto] = useState<string | null>(null);
   const [location, setLocation] = useState(
     route.params?.location || { latitude: 23.0225, longitude: 72.5714 },
   );
@@ -45,6 +47,20 @@ export const ReportScreen = ({ navigation, route }: any) => {
     );
   };
 
+  const pickPhoto = () => {
+    Alert.alert('Add Photo', 'Choose source', [
+      { text: 'Camera', onPress: () => launchCamera({ mediaType: 'photo', maxWidth: 800, maxHeight: 800, quality: 0.5, includeBase64: true }, handlePhoto) },
+      { text: 'Gallery', onPress: () => launchImageLibrary({ mediaType: 'photo', maxWidth: 800, maxHeight: 800, quality: 0.5, includeBase64: true }, handlePhoto) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handlePhoto = (res: any) => {
+    if (res.didCancel || res.errorCode) return;
+    const asset = res.assets?.[0];
+    if (asset?.base64) setPhoto(asset.base64);
+  };
+
   const handleSubmit = async () => {
     if (!description.trim()) {
       Alert.alert('Missing Info', 'Please describe the waterlogging situation.');
@@ -58,6 +74,7 @@ export const ReportScreen = ({ navigation, route }: any) => {
         severity,
         description: description.trim(),
         userId,
+        photo: photo || undefined,
       });
       setLoading(false);
       let msg = 'Thank you for reporting!';
@@ -123,6 +140,18 @@ export const ReportScreen = ({ navigation, route }: any) => {
           value={description} onChangeText={setDescription}
           multiline numberOfLines={4} editable={!loading} textAlignVertical="top" />
 
+        {/* Photo */}
+        <TouchableOpacity style={[s.photoBtn, { backgroundColor: c.card, borderColor: c.border }]} onPress={pickPhoto} activeOpacity={0.7}>
+          {photo ? (
+            <Image source={{ uri: `data:image/jpeg;base64,${photo}` }} style={s.photoPreview} />
+          ) : (
+            <View style={s.photoPlaceholder}>
+              <Icon name="camera-plus-outline" size={28} color={c.textMuted} />
+              <Text style={[s.photoTxt, { color: c.textMuted }]}>Add photo evidence</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
         {/* Submit */}
         <TouchableOpacity
           style={[s.submit, loading && { opacity: 0.55 }]}
@@ -165,4 +194,10 @@ const s = StyleSheet.create({
   // Submit
   submit: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 12, backgroundColor: Theme.primary, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6 },
   submitTxt: { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  // Photo
+  photoBtn: { borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', marginBottom: 24, overflow: 'hidden' },
+  photoPlaceholder: { alignItems: 'center', justifyContent: 'center', paddingVertical: 24, gap: 8 },
+  photoTxt: { fontSize: 13 },
+  photoPreview: { width: '100%', height: 180, borderRadius: 12 },
 });
