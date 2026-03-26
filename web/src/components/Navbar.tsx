@@ -25,6 +25,7 @@ const Navbar: React.FC<NavbarProps> = ({ isDark, onToggleTheme }) => {
           <Link to="/" className={isActive('/') ? 'active' : ''} onClick={() => setMobileMenu(false)}>Home</Link>
           <Link to="/live-map" className={isActive('/live-map') ? 'active' : ''} onClick={() => setMobileMenu(false)}>Live Map</Link>
           <Link to="/about" className={isActive('/about') ? 'active' : ''} onClick={() => setMobileMenu(false)}>About</Link>
+          <Link to="/how-it-works" className={isActive('/how-it-works') ? 'active' : ''} onClick={() => setMobileMenu(false)}>How it Works</Link>
           <Link to="/contact" className={isActive('/contact') ? 'active' : ''} onClick={() => setMobileMenu(false)}>Contact</Link>
           <a href="https://drive.google.com/uc?export=download&id=1KrmduD1MqWU4ke1O0y7WCbBRufps0nVM" target="_blank" rel="noreferrer" className="site-nav-cta" onClick={() => setMobileMenu(false)}>Get the App</a>
           <button className="site-nav-theme site-nav-theme-desktop" onClick={onToggleTheme} aria-label="Toggle theme">
