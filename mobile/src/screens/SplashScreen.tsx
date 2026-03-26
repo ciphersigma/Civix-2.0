@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, StatusBar, Image } from 'react-native';
 import { AuthService } from '../services/AuthService';
+import { useLang } from '../contexts/LanguageContext';
 
 const BG = '#F8FAFC';
 const TEXT = '#0F172A';
 const MUTED = '#94A3B8';
 
 export const SplashScreen = ({ navigation }: any) => {
+  const { t } = useLang();
   useEffect(() => {
     const t = setTimeout(async () => {
       const auth = await AuthService.isAuthenticated();
@@ -21,7 +23,7 @@ export const SplashScreen = ({ navigation }: any) => {
       <View style={s.center}>
         <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
         <Text style={s.name}>Civix</Text>
-        <Text style={s.tag}>Safer routes, smarter travel</Text>
+        <Text style={s.tag}>{t('tagline')}</Text>
       </View>
     </View>
   );

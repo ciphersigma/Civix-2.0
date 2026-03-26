@@ -10,16 +10,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Geolocation from 'react-native-geolocation-service';
 import { Theme } from '../components/ui';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLang } from '../contexts/LanguageContext';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const SEV = [
-  { key: 'Low', icon: 'water-outline', label: 'Low', desc: 'Ankle deep', color: Theme.green },
-  { key: 'Medium', icon: 'water', label: 'Medium', desc: 'Knee deep', color: Theme.yellow },
-  { key: 'High', icon: 'water-alert', label: 'High', desc: 'Waist+', color: Theme.red },
+  { key: 'Low', icon: 'water-outline', label: 'low', desc: 'anklDeep', color: Theme.green },
+  { key: 'Medium', icon: 'water', label: 'medium', desc: 'kneeDeep', color: Theme.yellow },
+  { key: 'High', icon: 'water-alert', label: 'high', desc: 'waistPlus', color: Theme.red },
 ];
 
 export const ReportScreen = ({ navigation, route }: any) => {
   const { colors: c } = useTheme();
+  const { t } = useLang();
   const [severity, setSeverity] = useState('Medium');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
@@ -76,7 +78,7 @@ export const ReportScreen = ({ navigation, route }: any) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={[s.backBtn, { backgroundColor: c.card }]}>
             <Icon name="arrow-left" size={20} color={c.textSec} />
           </TouchableOpacity>
-          <Text style={[s.title, { color: c.text }]}>Report</Text>
+          <Text style={[s.title, { color: c.text }]}>{t('report')}</Text>
           <View style={{ width: 40 }} />
         </View>
       </SafeAreaView>
@@ -87,7 +89,7 @@ export const ReportScreen = ({ navigation, route }: any) => {
         <View style={[s.locCard, { backgroundColor: c.card }]}>
           <Icon name="map-marker" size={22} color={Theme.primary} />
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={[s.locLabel, { color: c.text }]}>Current Location</Text>
+            <Text style={[s.locLabel, { color: c.text }]}>{t('currentLocation')}</Text>
             <Text style={s.locCoords}>{location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}</Text>
           </View>
           <TouchableOpacity onPress={getLoc} style={[s.locRefresh, { backgroundColor: c.cardAlt }]}>
@@ -96,7 +98,7 @@ export const ReportScreen = ({ navigation, route }: any) => {
         </View>
 
         {/* Severity — tap chips */}
-        <Text style={[s.label, { color: c.text }]}>How severe is it?</Text>
+        <Text style={[s.label, { color: c.text }]}>{t('howSevere')}</Text>
         <View style={s.sevRow}>
           {SEV.map(opt => {
             const on = severity === opt.key;
@@ -105,18 +107,18 @@ export const ReportScreen = ({ navigation, route }: any) => {
                 style={[s.sevChip, { backgroundColor: on ? opt.color + '15' : c.card, borderColor: on ? opt.color : c.border }]}
                 onPress={() => setSeverity(opt.key)} disabled={loading} activeOpacity={0.7}>
                 <Icon name={opt.icon} size={24} color={on ? opt.color : c.textMuted} />
-                <Text style={[s.sevLabel, { color: on ? opt.color : c.textSec }]}>{opt.label}</Text>
-                <Text style={[s.sevDesc, { color: c.textMuted }]}>{opt.desc}</Text>
+                <Text style={[s.sevLabel, { color: on ? opt.color : c.textSec }]}>{t(opt.label)}</Text>
+                <Text style={[s.sevDesc, { color: c.textMuted }]}>{t(opt.desc)}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
         {/* Description */}
-        <Text style={[s.label, { color: c.text }]}>What's happening?</Text>
+        <Text style={[s.label, { color: c.text }]}>{t('whatsHappening')}</Text>
         <TextInput
           style={[s.input, { backgroundColor: c.card, color: c.text, borderColor: c.border }]}
-          placeholder="Describe the waterlogging — depth, road condition, etc."
+          placeholder={t('descPlaceholder')}
           placeholderTextColor={c.textMuted}
           value={description} onChangeText={setDescription}
           multiline numberOfLines={4} editable={!loading} textAlignVertical="top" />
@@ -128,7 +130,7 @@ export const ReportScreen = ({ navigation, route }: any) => {
           {loading ? <ActivityIndicator color="#fff" /> : (
             <>
               <Icon name="send" size={18} color="#fff" />
-              <Text style={s.submitTxt}>Submit Report</Text>
+              <Text style={s.submitTxt}>{t('submitReport')}</Text>
             </>
           )}
         </TouchableOpacity>

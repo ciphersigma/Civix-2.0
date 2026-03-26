@@ -13,6 +13,7 @@ import { WeatherService } from '../services/WeatherService';
 import { api } from '../services/api';
 import { Theme as T } from '../components/ui';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLang } from '../contexts/LanguageContext';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const MAPBOX_TOKEN =
@@ -50,6 +51,7 @@ const hasDist = (lat1: number, lon1: number, lat2: number, lon2: number) => {
 export const HomeScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const { colors: c, isDark } = useTheme();
+  const { t } = useLang();
   const [loc, setLoc] = useState({ latitude: 23.0225, longitude: 72.5714 });
   const [hasLoc, setHasLoc] = useState(false);
   const [reports, setReports] = useState<any[]>([]);
@@ -184,7 +186,7 @@ export const HomeScreen = ({ navigation }: any) => {
         <View style={st.searchRow}>
           <View style={[st.searchBox, { backgroundColor: c.card }]}>
             <Text style={{ fontSize: 14, opacity: 0.35, marginRight: 8 }}>🔍</Text>
-            <TextInput style={[st.searchIn, { color: c.text }]} placeholder="Search location..." placeholderTextColor={c.textMuted}
+            <TextInput style={[st.searchIn, { color: c.text }]} placeholder={t('searchLocation')} placeholderTextColor={c.textMuted}
               value={q} onChangeText={t => { setQ(t); if (!t.trim()) setShowRes(false); }}
               onFocus={() => { if (results.length) setShowRes(true); }} returnKeyType="search" />
             {searching && <ActivityIndicator size="small" color={T.primary} />}
@@ -267,16 +269,16 @@ export const HomeScreen = ({ navigation }: any) => {
           </View>
           <View style={{ flex: 1 }} />
           <TouchableOpacity onPress={() => setSheetExpanded(!sheetExpanded)} activeOpacity={0.6} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Text style={st.sheetViewLink}>{sheetExpanded ? 'Hide' : 'View'}</Text>
+            <Text style={st.sheetViewLink}>{sheetExpanded ? t('hide') : t('view')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Middle: report count + pending */}
-        <Text style={[st.sheetTitle, { color: c.text }]}>{reports.length} reports nearby</Text>
+        <Text style={[st.sheetTitle, { color: c.text }]}>{reports.length} {t('reportsNearby')}</Text>
         {pendingCount > 0 && (
           <TouchableOpacity onPress={sync} style={st.sheetPending}>
             <Icon name="wifi-off" size={14} color={c.textMuted} />
-            <Text style={[st.sheetPendingTxt, { color: c.textMuted }]}>{pendingCount} pending reports (offline)</Text>
+            <Text style={[st.sheetPendingTxt, { color: c.textMuted }]}>{pendingCount} {t('pendingOffline')}</Text>
           </TouchableOpacity>
         )}
         {loading && <ActivityIndicator size="small" color={T.primary} style={{ marginTop: 8 }} />}
@@ -284,7 +286,7 @@ export const HomeScreen = ({ navigation }: any) => {
         {/* Bottom: Navigate button */}
         <TouchableOpacity style={[st.sheetNavBtn, { backgroundColor: c.cardAlt }]} onPress={() => navigation.navigate('Navigate')} activeOpacity={0.8}>
           <Icon name="navigation-variant-outline" size={18} color={c.text} />
-          <Text style={[st.sheetNavTxt, { color: c.text }]}>Navigate</Text>
+          <Text style={[st.sheetNavTxt, { color: c.text }]}>{t('navigate')}</Text>
         </TouchableOpacity>
 
         {/* Expanded report list */}

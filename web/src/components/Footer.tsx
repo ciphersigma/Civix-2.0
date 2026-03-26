@@ -31,6 +31,7 @@ const Footer: React.FC<FooterProps> = ({ isDark }) => {
             <h4>Resources</h4>
             <a href="/#features">Features</a>
             <a href="/#how">How it Works</a>
+            <Link to="/how-it-works"> How it Works</Link>
             <a href="/#faq">FAQ</a>
           </div>
           <div className="sf-col">

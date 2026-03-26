@@ -7,11 +7,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthService } from '../services/AuthService';
 import { Theme as T } from '../components/ui';
+import { useLang } from '../contexts/LanguageContext';
 
 type Mode = 'login' | 'signup';
 type Step = 'form' | 'otp';
 
 export const LoginScreen = ({ navigation }: any) => {
+  const { t } = useLang();
   const [mode, setMode] = useState<Mode>('login');
   const [step, setStep] = useState<Step>('form');
   const [fullName, setFullName] = useState('');
@@ -59,17 +61,17 @@ export const LoginScreen = ({ navigation }: any) => {
           {/* Logo */}
           <View style={s.logoArea}>
             <Image source={require('../assets/logo.png')} style={{ width: 64, height: 64, marginBottom: 20 }} resizeMode="contain" />
-            <Text style={s.title}>Welcome to Civix</Text>
-            <Text style={s.subtitle}>Sign in to access safer routes</Text>
+            <Text style={s.title}>{t('welcomeTitle')}</Text>
+            <Text style={s.subtitle}>{t('welcomeSub')}</Text>
           </View>
 
           {/* Tab switcher */}
           <View style={s.tabRow}>
             <TouchableOpacity style={[s.tab, mode === 'login' && s.tabOn]} onPress={() => switchMode('login')}>
-              <Text style={[s.tabTxt, mode === 'login' && s.tabTxtOn]}>Login</Text>
+              <Text style={[s.tabTxt, mode === 'login' && s.tabTxtOn]}>{t('login')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.tab, mode === 'signup' && s.tabOn]} onPress={() => switchMode('signup')}>
-              <Text style={[s.tabTxt, mode === 'signup' && s.tabTxtOn]}>Sign Up</Text>
+              <Text style={[s.tabTxt, mode === 'signup' && s.tabTxtOn]}>{t('signUp')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -77,28 +79,28 @@ export const LoginScreen = ({ navigation }: any) => {
             <View style={s.formArea}>
               {mode === 'signup' && (
                 <>
-                  <Text style={s.label}>Full Name</Text>
+                  <Text style={s.label}>{t('fullName')}</Text>
                   <View style={s.inputWrap}>
                     <TextInput style={s.input} placeholder="Your name" placeholderTextColor={T.textMuted} value={fullName} onChangeText={setFullName} editable={!loading} autoCapitalize="words" />
                   </View>
                 </>
               )}
-              <Text style={s.label}>Email Address</Text>
+              <Text style={s.label}>{t('emailAddress')}</Text>
               <View style={s.inputWrap}>
                 <TextInput style={s.input} placeholder="your.email@example.com" placeholderTextColor={T.textMuted} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" editable={!loading} />
               </View>
-              <Text style={s.hint}>We'll send you a one-time code to verify your email</Text>
+              <Text style={s.hint}>{t('emailHint')}</Text>
             </View>
           ) : (
             <View style={s.formArea}>
-              <Text style={s.label}>Verification Code</Text>
+              <Text style={s.label}>{t('verificationCode')}</Text>
               <Text style={s.otpHint}>Enter the 6-digit code sent to {email.trim()}</Text>
               <View style={s.inputWrap}>
                 <TextInput style={[s.input, { textAlign: 'center', fontSize: 22, letterSpacing: 8 }]} placeholder="000000" placeholderTextColor={T.textMuted} value={otp} onChangeText={setOtp} keyboardType="number-pad" maxLength={6} editable={!loading} autoFocus />
               </View>
               <View style={s.otpLinks}>
-                <TouchableOpacity onPress={() => { setStep('form'); setOtp(''); }} disabled={loading}><Text style={s.link}>← Back</Text></TouchableOpacity>
-                <TouchableOpacity onPress={handleSendOTP} disabled={loading}><Text style={s.link}>Resend Code</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => { setStep('form'); setOtp(''); }} disabled={loading}><Text style={s.link}>← {t('back')}</Text></TouchableOpacity>
+                <TouchableOpacity onPress={handleSendOTP} disabled={loading}><Text style={s.link}>{t('resendCode')}</Text></TouchableOpacity>
               </View>
             </View>
           )}
@@ -112,11 +114,11 @@ export const LoginScreen = ({ navigation }: any) => {
             onPress={step === 'form' ? handleSendOTP : handleVerifyOTP}
             disabled={loading} activeOpacity={0.85}>
             {loading ? <ActivityIndicator color="#fff" /> : (
-              <Text style={s.ctaText}>{step === 'form' ? 'Continue' : 'Verify & Continue'}</Text>
+              <Text style={s.ctaText}>{step === 'form' ? t('continue') : t('verifyAndContinue')}</Text>
             )}
           </TouchableOpacity>
 
-          <Text style={s.terms}>By continuing, you agree to our Terms of Service and{'\n'}Privacy Policy</Text>
+          <Text style={s.terms}>{t('terms')}</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
