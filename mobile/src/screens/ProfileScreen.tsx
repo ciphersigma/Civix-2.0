@@ -8,10 +8,13 @@ import { AuthService } from '../services/AuthService';
 import { ReportService } from '../services/ReportService';
 import { api } from '../services/api';
 import { Theme as T } from '../components/ui';
+import { useLang } from '../contexts/LanguageContext';
+import { LANG_LABELS, Lang } from '../i18n/translations';
 
 interface UserProfile { email: string; fullName?: string; userId: string; totalReports: number; pendingReports: number; memberSince: string; }
 
 export const ProfileScreen = ({ navigation }: any) => {
+  const { lang, setLang, t } = useLang();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -55,7 +58,7 @@ export const ProfileScreen = ({ navigation }: any) => {
 
         {/* Header */}
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.back}><Text style={{ fontSize: 18, color: T.textSec }}>←</Text></TouchableOpacity>
-        <Text style={s.title}>Profile</Text>
+        <Text style={s.title}>{t('profile')}</Text>
 
         {/* User card */}
         <View style={s.userCard}>
@@ -72,13 +75,13 @@ export const ProfileScreen = ({ navigation }: any) => {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <View style={s.trustIcon}><Text style={{ fontSize: 16 }}>📈</Text></View>
               <View>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: T.text }}>Trust Score</Text>
-                <Text style={{ fontSize: 12, color: T.textMuted }}>Community reliability</Text>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: T.text }}>{t('trustScore')}</Text>
+                <Text style={{ fontSize: 12, color: T.textMuted }}>{t('communityReliability')}</Text>
               </View>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={{ fontSize: 28, fontWeight: '800', color: T.text }}>{trustScore}</Text>
-              <Text style={{ fontSize: 11, color: T.textMuted }}>out of 100</Text>
+              <Text style={{ fontSize: 11, color: T.textMuted }}>{t('outOf100')}</Text>
             </View>
           </View>
           <View style={s.trustBar}><View style={[s.trustFill, { width: `${trustScore}%` }]} /></View>
@@ -89,36 +92,48 @@ export const ProfileScreen = ({ navigation }: any) => {
           <View style={s.statCard}>
             <View style={[s.statIcon, { backgroundColor: '#EEF2FF' }]}><Text style={{ fontSize: 16 }}>📍</Text></View>
             <Text style={s.statNum}>{profile?.totalReports || 0}</Text>
-            <Text style={s.statLabel}>Reports</Text>
+            <Text style={s.statLabel}>{t('reports')}</Text>
           </View>
           <View style={s.statCard}>
             <View style={[s.statIcon, { backgroundColor: '#FEF3C7' }]}><Text style={{ fontSize: 16 }}>🏅</Text></View>
             <Text style={s.statNum}>{helped}</Text>
-            <Text style={s.statLabel}>Helped</Text>
+            <Text style={s.statLabel}>{t('helped')}</Text>
           </View>
         </View>
 
         {/* Achievements */}
-        <Text style={s.sectionTitle}>Achievements</Text>
+        <Text style={s.sectionTitle}>{t('achievements')}</Text>
         <View style={s.achieveCard}>
           <View style={[s.achieveIcon, { backgroundColor: '#FEF3C7' }]}><Text style={{ fontSize: 18 }}>🏅</Text></View>
           <View style={{ flex: 1 }}>
-            <Text style={s.achieveName}>Community Hero</Text>
-            <Text style={s.achieveDesc}>Submitted 20+ reports</Text>
+            <Text style={s.achieveName}>{t('communityHero')}</Text>
+            <Text style={s.achieveDesc}>{t('submitted20')}</Text>
           </View>
         </View>
         <View style={s.achieveCard}>
           <View style={[s.achieveIcon, { backgroundColor: '#ECFDF5' }]}><Text style={{ fontSize: 18 }}>🛡</Text></View>
           <View style={{ flex: 1 }}>
-            <Text style={s.achieveName}>Safety Champion</Text>
-            <Text style={s.achieveDesc}>Helped 100+ travelers</Text>
+            <Text style={s.achieveName}>{t('safetyChampion')}</Text>
+            <Text style={s.achieveDesc}>{t('helped100')}</Text>
           </View>
+        </View>
+
+        {/* Language picker */}
+        <Text style={s.sectionTitle}>{t('language')}</Text>
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+          {(['en', 'hi', 'gu'] as Lang[]).map(l => (
+            <TouchableOpacity key={l}
+              style={[s.langBtn, lang === l && s.langBtnActive]}
+              onPress={() => setLang(l)} activeOpacity={0.7}>
+              <Text style={[s.langTxt, lang === l && s.langTxtActive]}>{LANG_LABELS[l]}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {/* Logout */}
         <TouchableOpacity style={s.logoutBtn} onPress={logout} activeOpacity={0.7}>
           <Text style={{ fontSize: 16 }}>🚪</Text>
-          <Text style={s.logoutTxt}>Logout</Text>
+          <Text style={s.logoutTxt}>{t('logout')}</Text>
         </TouchableOpacity>
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -156,4 +171,9 @@ const s = StyleSheet.create({
 
   logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#FEF2F2', borderRadius: 12, paddingVertical: 14, marginTop: 16, borderWidth: 1, borderColor: '#FECACA' },
   logoutTxt: { fontSize: 15, fontWeight: '700', color: T.red },
+
+  langBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center', backgroundColor: T.borderLight },
+  langBtnActive: { backgroundColor: T.primary },
+  langTxt: { fontSize: 13, fontWeight: '600', color: T.textMuted },
+  langTxtActive: { color: '#fff' },
 });
