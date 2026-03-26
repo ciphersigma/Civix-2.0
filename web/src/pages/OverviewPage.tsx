@@ -36,8 +36,6 @@ const OverviewPage: React.FC = () => {
   const active = s?.activeReports || 0;
   const weekly = s?.weeklyReports || [];
   const maxW = Math.max(...weekly.map((d: any) => parseInt(d.count) || 0), 1);
-  const nS = s?.notifications || { total: 0, responded: 0 };
-  const rr = nS.total > 0 ? Math.round((nS.responded / nS.total) * 100) : 0;
 
   return (
     <div style={{ maxWidth: 1100 }}>

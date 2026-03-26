@@ -11,7 +11,7 @@ const WeatherDashboardPage: React.FC = () => {
   const [live, setLive] = useState<any>(null);
 
   useEffect(() => { load(); }, []);
-  useEffect(() => { loadNotifs(); }, [nPage]);
+  useEffect(() => { loadNotifs(); }, [nPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = async () => {
     setLoading(true);

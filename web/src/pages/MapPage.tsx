@@ -14,7 +14,6 @@ const MapPage: React.FC = () => {
   const [mapStyle, setMapStyle] = useState('dark-v11');
   const [tokenMissing, setTokenMissing] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
-  const [heatmapLoaded, setHeatmapLoaded] = useState(false);
   const [timelineFrames, setTimelineFrames] = useState<any[]>([]);
   const [timelineIdx, setTimelineIdx] = useState(0);
   const [timelinePlaying, setTimelinePlaying] = useState(false);
@@ -156,7 +155,6 @@ const MapPage: React.FC = () => {
           'heatmap-opacity': 0.7,
         },
       });
-      setHeatmapLoaded(true);
     } catch (e) { console.error('Heatmap load error:', e); }
   };
 
@@ -166,7 +164,6 @@ const MapPage: React.FC = () => {
       if (map.current.getLayer('heatmap-layer')) map.current.removeLayer('heatmap-layer');
       if (map.current.getSource('heatmap-src')) map.current.removeSource('heatmap-src');
       setShowHeatmap(false);
-      setHeatmapLoaded(false);
     } else {
       setShowHeatmap(true);
       loadHeatmap();
