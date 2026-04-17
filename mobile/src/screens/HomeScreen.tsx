@@ -394,7 +394,7 @@ const st = StyleSheet.create({
   ctrlBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: T.card, alignItems: 'center', justifyContent: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 },
 
   // FAB — bottom center, overlaps sheet edge
-  fabWrap: { position: 'absolute', bottom: 190, left: 0, right: 0, alignItems: 'center', zIndex: 15, pointerEvents: 'box-none' },
+  fabWrap: { position: 'absolute', bottom: 165, left: 0, right: 0, alignItems: 'center', zIndex: 15, pointerEvents: 'box-none' },
   fab: { width: 56, height: 56, borderRadius: 28, backgroundColor: T.primary, alignItems: 'center', justifyContent: 'center', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 8 },
   fabIcon: { fontSize: 28, color: '#fff', fontWeight: '300', marginTop: -2 },
 

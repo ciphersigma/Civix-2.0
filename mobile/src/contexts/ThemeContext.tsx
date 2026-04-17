@@ -55,7 +55,7 @@ export const useTheme = () => useContext(Ctx);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const system = useColorScheme();
-  const [override, setOverride] = useState<'light' | 'dark' | null>(null);
+  const [override, setOverride] = useState<'light' | 'dark' | null>('light');
 
   const isDark = override ? override === 'dark' : system === 'dark';
   const colors = useMemo(() => (isDark ? dark : light), [isDark]);
