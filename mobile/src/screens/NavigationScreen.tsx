@@ -46,6 +46,7 @@ export const NavigationScreen = ({ navigation, route: navRoute }: any) => {
   const searchTimer = useRef<any>(null);
   const cameraRef = useRef<MapboxGL.Camera>(null);
   const watchId = useRef<number | null>(null);
+  const lastReroute = useRef<number>(0);
   const top = Math.max(insets.top, Platform.OS === 'android' ? 40 : 0);
 
   // ── All logic preserved exactly ──
@@ -58,9 +59,9 @@ export const NavigationScreen = ({ navigation, route: navRoute }: any) => {
     Geolocation.getCurrentPosition(p => setOrigin({ lat: p.coords.latitude, lng: p.coords.longitude }), () => setOrigin({ lat: 23.0225, lng: 72.5714 }), { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 });
   };
   const fetchNav = async () => {
-    if (!origin || !destination) return; setLoading(true);
-    try { const r = await api.get('/reports/navigate', { params: { origin: origin.lat+','+origin.lng, destination: destination.lat+','+destination.lng, profile: 'driving' } }); setRouteData(r.data); setActiveRoute(r.data.safe ? 'safe' : 'shortest'); fitB(r.data); }
-    catch { Alert.alert('Error', 'Could not compute route'); } finally { setLoading(false); }
+    if (!origin || !destination) return; setLoading(!navigating); // don't show loading overlay during reroute
+    try { const r = await api.get('/reports/navigate', { params: { origin: origin.lat+','+origin.lng, destination: destination.lat+','+destination.lng, profile: 'driving' } }); setRouteData(r.data); setActiveRoute(r.data.safe ? 'safe' : 'shortest'); setCurrentStepIdx(0); if (!navigating) fitB(r.data); }
+    catch { if (!navigating) Alert.alert('Error', 'Could not compute route'); } finally { setLoading(false); }
   };
   const fitB = (d: any) => {
     if (!cameraRef.current || !origin || !destination) return;
@@ -82,6 +83,15 @@ export const NavigationScreen = ({ navigation, route: navRoute }: any) => {
     if (steps[ni]?.startCoord) setDistToNextStep(haversine(loc.lat, loc.lng, steps[ni].startCoord[1], steps[ni].startCoord[0]));
     let rd = 0, rt2 = 0; for (let i = ci; i < steps.length; i++) { rd += steps[i].distance || 0; rt2 += steps[i].duration || 0; }
     setRemainingDist(rd); setEta(rt2);
+
+    // Auto-reroute: if user is >80m from nearest step, re-fetch route from current position
+    if (md > 80 && destination && Date.now() - lastReroute.current > 10000) {
+      lastReroute.current = Date.now();
+      console.log('[Nav] Off-route detected, rerouting...');
+      setOrigin({ lat: loc.lat, lng: loc.lng });
+      // fetchNav will be triggered by the useEffect on [origin, destination]
+    }
+
     if (destination && haversine(loc.lat, loc.lng, destination.lat, destination.lng) < 30) { stopNav(); Alert.alert('Arrived!', 'You reached your destination.'); }
   };
   const stopNav = () => { setNavigating(false); setIsFollowing(true); if (watchId.current !== null) { Geolocation.clearWatch(watchId.current); watchId.current = null; } if (routeData) fitB(routeData); };
