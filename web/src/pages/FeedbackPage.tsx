@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import api from '../services/api';
+import { useLang } from '../contexts/LanguageContext';
 import './StaticPages.css';
 import './FeedbackPage.css';
 
@@ -21,6 +22,7 @@ const FeedbackPage: React.FC = () => {
   const [error, setError] = useState('');
   const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
   const [filter, setFilter] = useState('all');
+  const { t } = useLang();
 
   const loadFeedback = async () => {
     try {
@@ -49,7 +51,7 @@ const FeedbackPage: React.FC = () => {
       loadFeedback();
       setTimeout(() => setSubmitted(false), 4000);
     } catch {
-      setError('Failed to submit. Please try again.');
+      setError(t('fbError'));
     } finally {
       setSubmitting(false);
     }
@@ -58,7 +60,7 @@ const FeedbackPage: React.FC = () => {
   const timeAgo = (date: string) => {
     const diff = Date.now() - new Date(date).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'just now';
+    if (mins < 1) return t('fbJustNow');
     if (mins < 60) return `${mins}m ago`;
     const hrs = Math.floor(mins / 60);
     if (hrs < 24) return `${hrs}h ago`;
@@ -67,9 +69,14 @@ const FeedbackPage: React.FC = () => {
     return new Date(date).toLocaleDateString();
   };
 
-  const typeLabel = (t: string) => {
-    const map: Record<string, string> = { suggestion: 'Suggestion', bug: 'Bug', feature: 'Feature', other: 'Other' };
-    return map[t] || t;
+  const typeLabel = (tp: string) => {
+    const map: Record<string, string> = {
+      suggestion: t('fbTypeSuggestion'),
+      bug: t('fbTypeBug'),
+      feature: t('fbTypeFeature'),
+      other: t('fbTypeOther'),
+    };
+    return map[tp] || tp;
   };
 
   const filtered = filter === 'all' ? feedbackList : feedbackList.filter(f => f.type === filter);
@@ -83,48 +90,48 @@ const FeedbackPage: React.FC = () => {
         <div className="fb-wrap">
 
           <section className="fb-hero">
-            <span className="fb-eyebrow">Feedback</span>
-            <h1>Help us make CIVIX <span className="sp-gradient-text">better</span></h1>
-            <p className="fb-hero-lead">We're building this for you. Tell us what's working, what's broken, or what you wish existed. Every suggestion is public — transparency builds trust.</p>
+            <span className="fb-eyebrow">{t('fbEyebrow')}</span>
+            <h1>{t('fbHeroTitle1')} <span className="sp-gradient-text">{t('fbHeroTitle2')}</span></h1>
+            <p className="fb-hero-lead">{t('fbHeroLead')}</p>
           </section>
 
           {/* Submit form */}
           <section className="fb-form-section">
-            <h2>Share your thoughts</h2>
+            <h2>{t('fbFormTitle')}</h2>
 
-            {submitted && <p className="fb-success">Thanks for your feedback — it's now visible below.</p>}
+            {submitted && <p className="fb-success">{t('fbSuccess')}</p>}
             {error && <p className="fb-error">{error}</p>}
 
             <form className="fb-form" onSubmit={handleSubmit}>
               <div className="fb-form-row">
                 <div className="fb-field">
-                  <label htmlFor="fb-name">Name</label>
-                  <input id="fb-name" type="text" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Your name" />
+                  <label htmlFor="fb-name">{t('fbNameLabel')}</label>
+                  <input id="fb-name" type="text" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder={t('fbNamePlaceholder')} />
                 </div>
                 <div className="fb-field">
-                  <label htmlFor="fb-email">Email (optional)</label>
-                  <input id="fb-email" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="you@example.com" />
+                  <label htmlFor="fb-email">{t('fbEmailLabel')}</label>
+                  <input id="fb-email" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder={t('fbEmailPlaceholder')} />
                 </div>
               </div>
 
               <div className="fb-field">
-                <label>What kind of feedback?</label>
+                <label>{t('fbTypeLabel')}</label>
                 <div className="fb-type-row">
-                  {(['suggestion', 'bug', 'feature', 'other'] as const).map(t => (
-                    <button key={t} type="button" className={`fb-type-btn ${form.type === t ? 'active' : ''}`} onClick={() => setForm({...form, type: t})}>
-                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                  {(['suggestion', 'bug', 'feature', 'other'] as const).map(tp => (
+                    <button key={tp} type="button" className={`fb-type-btn ${form.type === tp ? 'active' : ''}`} onClick={() => setForm({...form, type: tp})}>
+                      {typeLabel(tp)}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="fb-field">
-                <label htmlFor="fb-message">Your feedback</label>
-                <textarea id="fb-message" required rows={5} value={form.message} onChange={e => setForm({...form, message: e.target.value})} placeholder="Tell us what's on your mind..." />
+                <label htmlFor="fb-message">{t('fbMessageLabel')}</label>
+                <textarea id="fb-message" required rows={5} value={form.message} onChange={e => setForm({...form, message: e.target.value})} placeholder={t('fbMessagePlaceholder')} />
               </div>
 
               <button type="submit" className="fb-submit" disabled={submitting}>
-                {submitting ? 'Submitting...' : 'Post Feedback'}
+                {submitting ? t('fbSubmitting') : t('fbPostFeedback')}
               </button>
             </form>
           </section>
@@ -132,20 +139,20 @@ const FeedbackPage: React.FC = () => {
           {/* Public feedback wall */}
           <section className="fb-wall-section">
             <div className="fb-wall-header">
-              <h2>Community feedback</h2>
-              <span className="fb-wall-count">{feedbackList.length} {feedbackList.length === 1 ? 'post' : 'posts'}</span>
+              <h2>{t('fbCommunityTitle')}</h2>
+              <span className="fb-wall-count">{feedbackList.length} {feedbackList.length === 1 ? t('fbPost') : t('fbPosts')}</span>
             </div>
 
             <div className="fb-filter-row">
-              {['all', 'suggestion', 'bug', 'feature', 'other'].map(t => (
-                <button key={t} className={`fb-filter-btn ${filter === t ? 'active' : ''}`} onClick={() => setFilter(t)}>
-                  {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
+              {['all', 'suggestion', 'bug', 'feature', 'other'].map(tp => (
+                <button key={tp} className={`fb-filter-btn ${filter === tp ? 'active' : ''}`} onClick={() => setFilter(tp)}>
+                  {tp === 'all' ? t('fbFilterAll') : typeLabel(tp)}
                 </button>
               ))}
             </div>
 
             {filtered.length === 0 ? (
-              <p className="fb-empty">No feedback yet. Be the first to share your thoughts.</p>
+              <p className="fb-empty">{t('fbEmpty')}</p>
             ) : (
               <div className="fb-wall">
                 {filtered.map(item => (

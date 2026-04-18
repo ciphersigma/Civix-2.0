@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { useLang } from '../contexts/LanguageContext';
 import './StaticPages.css';
 import './ContactPage.css';
 
@@ -8,6 +9,7 @@ const ContactPage: React.FC = () => {
   const [isDark, setIsDark] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [sent, setSent] = useState(false);
+  const { t } = useLang();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,64 +29,64 @@ const ContactPage: React.FC = () => {
 
           {/* Hero */}
           <section className="contact-hero">
-            <span className="contact-eyebrow">Contact</span>
-            <h1>Let's <span className="sp-gradient-text">talk</span></h1>
-            <p className="contact-hero-lead">Have a question, feedback, or want to collaborate on making cities flood-smart? We're all ears.</p>
+            <span className="contact-eyebrow">{t('contactEyebrow')}</span>
+            <h1>{t('contactHeroTitle1')} <span className="sp-gradient-text">{t('contactHeroTitle2')}</span></h1>
+            <p className="contact-hero-lead">{t('contactHeroLead')}</p>
           </section>
 
           {/* Contact info — inline, not cards */}
           <section className="contact-info-section">
             <div className="contact-info-row">
               <div className="contact-info-item">
-                <span className="contact-info-label">Email</span>
+                <span className="contact-info-label">{t('contactEmailLabel')}</span>
                 <a href="mailto:prashantchettiyar@ieee.org" className="contact-info-value">prashantchettiyar@ieee.org</a>
-                <span className="contact-info-hint">We typically respond within 24 hours</span>
+                <span className="contact-info-hint">{t('contactEmailHint')}</span>
               </div>
               <div className="contact-info-item">
-                <span className="contact-info-label">Location</span>
-                <span className="contact-info-value">Ahmedabad, Gujarat, India</span>
+                <span className="contact-info-label">{t('contactLocationLabel')}</span>
+                <span className="contact-info-value">{t('contactLocationValue')}</span>
               </div>
               <div className="contact-info-item">
-                <span className="contact-info-label">Social</span>
+                <span className="contact-info-label">{t('contactSocialLabel')}</span>
                 <a href="https://www.instagram.com/craftedbyprashant" target="_blank" rel="noreferrer" className="contact-info-value">@craftedbyprashant</a>
-                <span className="contact-info-hint">Follow us for updates</span>
+                <span className="contact-info-hint">{t('contactSocialHint')}</span>
               </div>
             </div>
           </section>
 
           {/* Form — full width, clean */}
           <section className="contact-form-section">
-            <h2>Send us a message</h2>
-            <p className="contact-form-desc">Fill this out and we'll get back to you. Or just email us directly — whatever works.</p>
+            <h2>{t('contactFormTitle')}</h2>
+            <p className="contact-form-desc">{t('contactFormDesc')}</p>
 
             <form className="contact-form" onSubmit={handleSubmit}>
               <div className="contact-form-row">
                 <div className="contact-field">
-                  <label htmlFor="contact-name">Name</label>
-                  <input id="contact-name" type="text" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Your name" />
+                  <label htmlFor="contact-name">{t('contactNameLabel')}</label>
+                  <input id="contact-name" type="text" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder={t('contactNamePlaceholder')} />
                 </div>
                 <div className="contact-field">
-                  <label htmlFor="contact-email">Email</label>
-                  <input id="contact-email" type="email" required value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="you@example.com" />
+                  <label htmlFor="contact-email">{t('contactEmailFieldLabel')}</label>
+                  <input id="contact-email" type="email" required value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder={t('contactEmailPlaceholder')} />
                 </div>
               </div>
               <div className="contact-field">
-                <label htmlFor="contact-subject">Subject</label>
-                <input id="contact-subject" type="text" value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} placeholder="What's this about?" />
+                <label htmlFor="contact-subject">{t('contactSubjectLabel')}</label>
+                <input id="contact-subject" type="text" value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} placeholder={t('contactSubjectPlaceholder')} />
               </div>
               <div className="contact-field">
-                <label htmlFor="contact-message">Message</label>
-                <textarea id="contact-message" required rows={6} value={form.message} onChange={e => setForm({...form, message: e.target.value})} placeholder="Tell us what's on your mind..." />
+                <label htmlFor="contact-message">{t('contactMessageLabel')}</label>
+                <textarea id="contact-message" required rows={6} value={form.message} onChange={e => setForm({...form, message: e.target.value})} placeholder={t('contactMessagePlaceholder')} />
               </div>
               <button type="submit" className="contact-submit" disabled={sent}>
-                {sent ? 'Sent — opening mail client...' : 'Send Message'}
+                {sent ? t('contactSent') : t('contactSend')}
               </button>
             </form>
           </section>
 
           {/* Collaborate note */}
           <section className="contact-collab">
-            <p>Want to partner with us? We're always open to working with civic-minded teams, municipal bodies, and organizations building for urban resilience. Just drop us a line.</p>
+            <p>{t('contactCollabNote')}</p>
           </section>
 
         </div>

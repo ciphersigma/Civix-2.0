@@ -21,6 +21,7 @@ import ApiKeysPage from './pages/ApiKeysPage';
 import WeatherDashboardPage from './pages/WeatherDashboardPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 
 const ScrollToTop: React.FC = () => {
   const { pathname } = useLocation();
@@ -36,6 +37,7 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 function App() {
   return (
     <ThemeProvider>
+    <LanguageProvider>
     <AuthProvider>
       <Router>
         <ScrollToTop />
@@ -69,6 +71,7 @@ function App() {
         </Routes>
       </Router>
     </AuthProvider>
+    </LanguageProvider>
     </ThemeProvider>
   );
 }
